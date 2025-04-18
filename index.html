@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,41 +12,72 @@
     <style>
         /* Styles additionnels si besoin */
         .cell {
-            width: 10px; /* Taille fixe pour référence dans JS, mais la grille s'adapte au conteneur */
+            width: 10px;
+            /* Taille fixe pour référence dans JS, mais la grille s'adapte au conteneur */
             height: 10px;
             border: 1px solid #eee;
         }
-        .sain { background-color: #4ade80; } /* green-400 */
-        .infecte { background-color: #f87171; } /* red-400 */
-        .gueri { background-color: #60a5fa; } /* blue-400 */
-        .mort { background-color: #71717a; } /* zinc-500 */
-        .vide { background-color: #ffffff; } /* white */
+
+        .sain {
+            background-color: #4ade80;
+        }
+
+        /* green-400 */
+        .infecte {
+            background-color: #f87171;
+        }
+
+        /* red-400 */
+        .gueri {
+            background-color: #60a5fa;
+        }
+
+        /* blue-400 */
+        .mort {
+            background-color: #71717a;
+        }
+
+        /* zinc-500 */
+        .vide {
+            background-color: #ffffff;
+        }
+
+        /* white */
 
         /* Conteneur pour le graphique pour s'assurer qu'il a une taille */
         .chart-container {
             position: relative;
-            height: 300px; /* Ajustez si nécessaire */
+            height: 300px;
+            /* Ajustez si nécessaire */
             width: 100%;
         }
 
         /* Style pour rendre le panneau de contrôle défilable */
         .control-panel-container {
-            max-height: 95vh; /* Limite la hauteur à 95% de la vue */
-            overflow-y: auto; /* Ajoute une barre de défilement si nécessaire */
+            max-height: 95vh;
+            /* Limite la hauteur à 95% de la vue */
+            overflow-y: auto;
+
+            /* Ajoute une barre de défilement si nécessaire */
             /* Optionnel : Améliorer l'apparence de la barre de défilement (navigateurs Webkit) */
             &::-webkit-scrollbar {
-                 width: 8px;
+                width: 8px;
             }
+
             &::-webkit-scrollbar-track {
-                 background: #f1f1f1;
-                 border-radius: 10px;
+                background: #f1f1f1;
+                border-radius: 10px;
             }
+
             &::-webkit-scrollbar-thumb {
-                 background: #a0aec0; /* gray-500 */
-                 border-radius: 10px;
+                background: #a0aec0;
+                /* gray-500 */
+                border-radius: 10px;
             }
+
             &::-webkit-scrollbar-thumb:hover {
-                 background: #718096; /* gray-600 */
+                background: #718096;
+                /* gray-600 */
             }
         }
 
@@ -55,20 +87,24 @@
             width: 100%;
             height: 100%;
         }
+
         /* Styles pour que les cellules remplissent l'espace alloué par la grille */
-        #grid > .cell {
-             width: auto; /* Laisser la grille CSS gérer la taille */
-             height: auto;
+        #grid>.cell {
+            width: auto;
+            /* Laisser la grille CSS gérer la taille */
+            height: auto;
         }
-         /* Ajustement de la taille du conteneur de la grille pour mieux fonctionner avec aspect-square */
-         #gridContainer {
-            display: flex; /* Nécessaire pour que l'enfant grid prenne la taille */
+
+        /* Ajustement de la taille du conteneur de la grille pour mieux fonctionner avec aspect-square */
+        #gridContainer {
+            display: flex;
+            /* Nécessaire pour que l'enfant grid prenne la taille */
             justify-content: center;
             align-items: center;
-         }
-
+        }
     </style>
 </head>
+
 <body class="bg-gray-100 p-4 flex flex-col lg:flex-row min-h-screen">
 
     <!-- Panneau de Contrôle -->
@@ -80,15 +116,20 @@
             <h2 class="text-lg font-semibold mb-2">Paramètres Généraux</h2>
             <div class="mb-2">
                 <label for="gridSize" class="block text-sm font-medium text-gray-700">Taille Grille:</label>
-                <input type="number" id="gridSize" value="50" min="10" max="100" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-            </div>
-             <div class="mb-2">
-                <label for="populationSize" class="block text-sm font-medium text-gray-700">Nb. Individus (0=Manuel):</label>
-                <input type="number" id="populationSize" value="400" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <input type="number" id="gridSize" value="50" min="10" max="100"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
             </div>
             <div class="mb-2">
-                <label for="initialInfected" class="block text-sm font-medium text-gray-700">Nb. Infectés Initiaux:</label>
-                <input type="number" id="initialInfected" value="5" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <label for="populationSize" class="block text-sm font-medium text-gray-700">Nb. Individus
+                    (0=Manuel):</label>
+                <input type="number" id="populationSize" value="400" min="0"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+            </div>
+            <div class="mb-2">
+                <label for="initialInfected" class="block text-sm font-medium text-gray-700">Nb. Infectés
+                    Initiaux:</label>
+                <input type="number" id="initialInfected" value="5" min="1"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
             </div>
         </div>
 
@@ -96,66 +137,91 @@
         <div class="bg-white p-4 rounded shadow flex-shrink-0">
             <h2 class="text-lg font-semibold mb-2">Paramètres Simulation</h2>
             <div class="mb-2">
-                <label for="infectionRadius" class="block text-sm font-medium text-gray-700">Rayon d'infection: <span id="infectionRadiusValue">2</span></label>
-                <input type="range" id="infectionRadius" min="1" max="10" value="2" step="0.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-            </div>
-             <div class="mb-2">
-                <label for="infectionRate" class="block text-sm font-medium text-gray-700">Taux d'infection (base): <span id="infectionRateValue">0.1</span></label>
-                 <input type="range" id="infectionRate" min="0" max="1" value="0.1" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                 <p class="text-xs text-gray-500">Diminue avec la distance.</p>
+                <label for="infectionRadius" class="block text-sm font-medium text-gray-700">Rayon d'infection: <span
+                        id="infectionRadiusValue">2</span></label>
+                <input type="range" id="infectionRadius" min="1" max="10" value="2" step="0.5"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
             <div class="mb-2">
-                <label for="infectionDuration" class="block text-sm font-medium text-gray-700">Durée Infection (ticks): <span id="infectionDurationValue">50</span></label>
-                <input type="range" id="infectionDuration" min="5" max="200" value="50" step="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                <label for="infectionRate" class="block text-sm font-medium text-gray-700">Taux d'infection (base):
+                    <span id="infectionRateValue">0.1</span></label>
+                <input type="range" id="infectionRate" min="0" max="1" value="0.1" step="0.01"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                <p class="text-xs text-gray-500">Diminue avec la distance.</p>
             </div>
             <div class="mb-2">
-                <label for="mortalityRate" class="block text-sm font-medium text-gray-700">Taux Mortalité: <span id="mortalityRateValue">5</span>%</label>
-                <input type="range" id="mortalityRate" min="0" max="100" value="5" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                <label for="infectionDuration" class="block text-sm font-medium text-gray-700">Durée Infection (ticks):
+                    <span id="infectionDurationValue">50</span></label>
+                <input type="range" id="infectionDuration" min="5" max="200" value="50" step="5"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
-             <div class="mb-2">
-                <label for="immunityLevel" class="block text-sm font-medium text-gray-700">Immunité après guérison: <span id="immunityLevelValue">90</span>%</label>
-                <input type="range" id="immunityLevel" min="0" max="100" value="90" step="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            <div class="mb-2">
+                <label for="mortalityRate" class="block text-sm font-medium text-gray-700">Taux Mortalité: <span
+                        id="mortalityRateValue">5</span>%</label>
+                <input type="range" id="mortalityRate" min="0" max="100" value="5" step="1"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
-             <div class="mb-2">
-                <label for="tickSpeed" class="block text-sm font-medium text-gray-700">Vitesse (ms/tick): <span id="tickSpeedValue">100</span></label>
-                <input type="range" id="tickSpeed" min="10" max="1000" value="100" step="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            <div class="mb-2">
+                <label for="immunityLevel" class="block text-sm font-medium text-gray-700">Immunité après guérison:
+                    <span id="immunityLevelValue">90</span>%</label>
+                <input type="range" id="immunityLevel" min="0" max="100" value="90" step="5"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <div class="mb-2">
+                <label for="tickSpeed" class="block text-sm font-medium text-gray-700">Vitesse (ms/tick): <span
+                        id="tickSpeedValue">100</span></label>
+                <input type="range" id="tickSpeed" min="10" max="1000" value="100" step="10"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
         </div>
 
         <!-- Contrôles -->
         <div class="bg-white p-4 rounded shadow flex-shrink-0">
-             <h2 class="text-lg font-semibold mb-2">Contrôles</h2>
-             <div class="flex space-x-2 mb-2">
-                 <button id="startButton" class="flex-1 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Démarrer</button>
-                 <button id="pauseButton" class="flex-1 bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded" disabled>Pause</button>
-             </div>
-             <button id="resetButton" class="w-full bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Réinitialiser</button>
-             <p id="manualPlacementInfo" class="text-sm text-blue-600 mt-2 hidden">Mode placement manuel actif. Cliquez sur la grille pour placer/infecter (Sain -> Infecté).</p>
+            <h2 class="text-lg font-semibold mb-2">Contrôles</h2>
+            <div class="flex space-x-2 mb-2">
+                <button id="startButton"
+                    class="flex-1 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Démarrer</button>
+                <button id="pauseButton"
+                    class="flex-1 bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
+                    disabled>Pause</button>
+            </div>
+            <button id="resetButton"
+                class="w-full bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Réinitialiser</button>
+            <p id="manualPlacementInfo" class="text-sm text-blue-600 mt-2 hidden">Mode placement manuel actif. Cliquez
+                sur la grille pour placer/infecter (Sain -> Infecté).</p>
         </div>
 
         <!-- Statistiques -->
-         <div class="bg-white p-4 rounded shadow flex-shrink-0">
+        <div class="bg-white p-4 rounded shadow flex-shrink-0">
             <h2 class="text-lg font-semibold mb-2">Statistiques (Tick: <span id="tickCount">0</span>)</h2>
             <p class="text-green-600">Sains: <span id="sainCount">0</span></p>
             <p class="text-red-600">Infectés: <span id="infecteCount">0</span></p>
             <p class="text-blue-600">Guéris/Immunisés: <span id="gueriCount">0</span></p>
             <p class="text-gray-600">Morts: <span id="mortCount">0</span></p>
             <p class="font-semibold">Total: <span id="totalCount">0</span></p>
-         </div>
+        </div>
 
-         <!-- Graphique -->
-         <div class="bg-white p-4 rounded shadow flex-shrink-0">
+        <!-- Graphique -->
+        <div class="bg-white p-4 rounded shadow flex-shrink-0">
             <h2 class="text-lg font-semibold mb-2">Évolution Temporelle</h2>
             <div class="chart-container">
                 <canvas id="sirChartCanvas"></canvas>
             </div>
-         </div>
+            <!-- BOUTON EXPORTATION AJOUTÉ ICI -->
+            <div class="mt-4">
+                <button id="exportCsvButton"
+                    class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Exporter en CSV (Excel)
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Zone de Simulation -->
-    <div class="w-full lg:w-3/4 flex justify-center items-center lg:items-start lg:pl-4 flex-grow"> 
-      
-        <div id="gridContainer" class="bg-white shadow-lg overflow-auto w-full max-w-full h-[50vh] sm:h-[60vh] lg:h-auto lg:max-h-[90vh] aspect-square">
+    <div class="w-full lg:w-3/4 flex justify-center items-center lg:items-start lg:pl-4 flex-grow">
+
+        <div id="gridContainer"
+            class="bg-white shadow-lg overflow-auto w-full max-w-full h-[50vh] sm:h-[60vh] lg:h-auto lg:max-h-[90vh] aspect-square">
             <div id="grid" class="border border-gray-300" style="grid-template-columns: repeat(50, minmax(0, 1fr));">
                 <!-- Les cellules seront ajoutées ici par JS -->
             </div>
@@ -163,6 +229,7 @@
     </div>
 
     <!-- Liaison au fichier JavaScript (version incrémentée) -->
-    <script src="script.js?v=1.0.2"></script>
+    <script src="script.js?v=1.0.4"></script>
 </body>
+
 </html>

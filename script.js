@@ -1,3 +1,5 @@
+// --- START OF FILE script.js ---
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuration et États ---
     const State = {
@@ -44,15 +46,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let isManualPlacementMode = false;
 
     let sirChart = null;
-    let historyTicks = [];
-    let historyHealthy = [];
-    let historyInfected = [];
-    let historyRecovered = [];
-    let historyDead = [];
-    const MAX_HISTORY_POINTS = 500;
+
+    // --- MODIFICATION: Separate History Arrays ---
+    // History for the chart (limited size for performance)
+    let chartHistoryTicks = [];
+    let chartHistoryHealthy = [];
+    let chartHistoryInfected = [];
+    let chartHistoryRecovered = [];
+    let chartHistoryDead = [];
+    const MAX_CHART_HISTORY_POINTS = 500; // Limit for the chart
+
+    // Complete history for CSV export (unlimited)
+    let fullHistoryTicks = [];
+    let fullHistoryHealthy = [];
+    let fullHistoryInfected = [];
+    let fullHistoryRecovered = [];
+    let fullHistoryDead = [];
+    // --- END MODIFICATION ---
 
     const gridElement = document.getElementById('grid');
-    const gridContainerElement = document.getElementById('gridContainer'); // Référence conservée au cas où
+    const gridContainerElement = document.getElementById('gridContainer');
     const gridSizeInput = document.getElementById('gridSize');
     const populationSizeInput = document.getElementById('populationSize');
     const initialInfectedInput = document.getElementById('initialInfected');
@@ -83,7 +96,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalCountSpan = document.getElementById('totalCount');
     const chartCanvas = document.getElementById('sirChartCanvas');
 
+    const exportCsvButton = document.getElementById('exportCsvButton');
+
     // --- Fonctions ---
+
+    function exportDataToCsv() {
+        // --- MODIFICATION: Use full history for export ---
+        if (fullHistoryTicks.length === 0) {
+            alert("Aucune donnée à exporter. Lancez d'abord la simulation.");
+            return;
+        }
+
+        // En-tête CSV
+        let csvContent = "data:text/csv;charset=utf-8,";
+        const header = ["Tick", "Sains", "Infectés", "Guéris", "Morts"];
+        csvContent += header.join(";") + "\r\n"; // Ajoute l'en-tête et une nouvelle ligne
+
+        // Lignes de données - Read from full history
+        for (let i = 0; i < fullHistoryTicks.length; i++) {
+            const row = [
+                fullHistoryTicks[i],
+                fullHistoryHealthy[i],
+                fullHistoryInfected[i],
+                fullHistoryRecovered[i],
+                fullHistoryDead[i]
+            ];
+            csvContent += row.join(";") + "\r\n"; // Ajoute la ligne et une nouvelle ligne
+        }
+        // --- END MODIFICATION ---
+
+        // Créer un lien caché pour déclencher le téléchargement
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "simulation_epidemic_data_full.csv"); // Nom du fichier (ajouté _full)
+        document.body.appendChild(link); // Nécessaire pour Firefox
+
+        link.click(); // Simule le clic pour télécharger
+
+        document.body.removeChild(link); // Nettoie le lien caché
+        console.log("Données complètes exportées en CSV.");
+    }
+
 
     function updateParameterValues() {
         params.gridSize = parseInt(gridSizeInput.value) || 50;
@@ -116,8 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gridCells[r] = [];
             for (let c = 0; c < size; c++) {
                 const cell = document.createElement('div');
-                // On ajoute 'cell' pour le style de base, et la classe d'état initiale
-                cell.className = `cell ${StateGridClasses[State.EMPTY]}`; // Utilisation de className pour remplacer toutes les classes initialement
+                cell.className = `cell ${StateGridClasses[State.EMPTY]}`;
                 cell.dataset.r = r;
                 cell.dataset.c = c;
                 gridElement.appendChild(cell);
@@ -125,13 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // --- LE BLOC DE DIMENSIONNEMENT JS EST SUPPRIMÉ ICI ---
-        // La taille du gridContainer est maintenant gérée par CSS (Tailwind)
-
-         gridElement.removeEventListener('click', handleManualPlacementClick);
-         if (params.manualPlacement && !isRunning) {
+        gridElement.removeEventListener('click', handleManualPlacementClick);
+        if (params.manualPlacement && !isRunning) {
             gridElement.addEventListener('click', handleManualPlacementClick);
-         }
+        }
     }
 
     function initializeGridData(size) {
@@ -164,30 +214,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             attempts++;
         }
-        if(attempts >= maxAttempts) console.warn("Could not place all individuals (random placement).");
+        if (attempts >= maxAttempts) console.warn("Could not place all individuals (random placement).");
 
         let infectedPlaced = 0;
         const healthyIndividualsCoords = [];
-         for (let r = 0; r < size; r++) {
+        for (let r = 0; r < size; r++) {
             for (let c = 0; c < size; c++) {
-                if(grid[r][c].state === State.HEALTHY) {
-                    healthyIndividualsCoords.push({r, c});
+                if (grid[r][c].state === State.HEALTHY) {
+                    healthyIndividualsCoords.push({ r, c });
                 }
             }
-         }
+        }
 
         healthyIndividualsCoords.sort(() => Math.random() - 0.5);
 
         const numToInfect = Math.min(initialInfectedCount, healthyIndividualsCoords.length);
-        for(let i=0; i < numToInfect; i++) {
+        for (let i = 0; i < numToInfect; i++) {
             const coord = healthyIndividualsCoords[i];
             grid[coord.r][coord.c].state = State.INFECTED;
             grid[coord.r][coord.c].infectionTimer = 0;
             infectedPlaced++;
         }
 
-        if(infectedPlaced < initialInfectedCount && numToInfect > 0) { // Ne pas avertir si initialInfectedCount était 0
-             console.warn(`Could only place ${infectedPlaced} out of ${initialInfectedCount} initial infected individuals.`);
+        if (infectedPlaced < initialInfectedCount && numToInfect > 0) {
+            console.warn(`Could only place ${infectedPlaced} out of ${initialInfectedCount} initial infected individuals.`);
         }
     }
 
@@ -200,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const r = parseInt(cellElement.dataset.r);
         const c = parseInt(cellElement.dataset.c);
 
-        // Vérifier les limites (sécurité)
         if (r < 0 || r >= params.gridSize || c < 0 || c >= params.gridSize) return;
 
         const currentCell = grid[r][c];
@@ -214,39 +263,30 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCell.state = State.EMPTY;
             currentCell.infectionTimer = 0;
         } else if (currentCell.state === State.RECOVERED || currentCell.state === State.DEAD) {
-             currentCell.state = State.EMPTY;
+            currentCell.state = State.EMPTY;
         }
-        renderGridCell(r, c); // Mettre à jour seulement la cellule cliquée
-        updateStats();
+        renderGridCell(r, c);
+        updateStats(); // Update stats and chart for the manual change
     }
 
-    // Fonction optimisée pour rendre une seule cellule
     function renderGridCell(r, c) {
         if (grid[r] && grid[r][c] && gridCells[r] && gridCells[r][c]) {
             const cellData = grid[r][c];
             const cellElement = gridCells[r][c];
             const newStateClass = StateGridClasses[cellData.state];
 
-            // Remplacement simple et efficace des classes d'état
-            // On garde 'cell' et on remplace la classe d'état
-            const stateClasses = Object.values(StateGridClasses);
-            let newClassName = 'cell'; // Base class
-            if(newStateClass) {
-                newClassName += ' ' + newStateClass; // Add state class if not empty
+            let newClassName = 'cell';
+            if (newStateClass) {
+                newClassName += ' ' + newStateClass;
             }
 
-            // Appliquer seulement si différent pour éviter reflow inutile
             if (cellElement.className !== newClassName) {
                 cellElement.className = newClassName;
             }
         }
     }
 
-
     function renderGrid() {
-        // Appelle renderGridCell pour chaque cellule
-        // (Moins performant que la version précédente si beaucoup de cellules ne changent pas,
-        // mais plus simple et robuste, surtout après le placement manuel)
         for (let r = 0; r < params.gridSize; r++) {
             for (let c = 0; c < params.gridSize; c++) {
                 renderGridCell(r, c);
@@ -269,14 +309,13 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let nr = r_min; nr <= r_max; nr++) {
             for (let nc = c_min; nc <= c_max; nc++) {
                 if (nr === r && nc === c) continue;
-                 // Vérifier si les coordonnées sont valides (sécurité)
                 if (!grid[nr] || !grid[nr][nc]) continue;
 
                 const dist = calculateDistance(r, c, nr, nc);
                 if (dist <= radius) {
-                     if(grid[nr][nc].state === State.HEALTHY) {
-                         neighbors.push({ r: nr, c: nc, distance: dist });
-                     }
+                    if (grid[nr][nc].state === State.HEALTHY) {
+                        neighbors.push({ r: nr, c: nc, distance: dist });
+                    }
                 }
             }
         }
@@ -288,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const size = params.gridSize;
         const nextGrid = JSON.parse(JSON.stringify(grid));
         let hasInfected = false;
-        let changedCells = []; // Stocker les cellules qui changent d'état
+        let changedCells = [];
 
         for (let r = 0; r < size; r++) {
             for (let c = 0; c < size; c++) {
@@ -306,54 +345,43 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             newState = (Math.random() < params.immunityLevel) ? State.RECOVERED : State.HEALTHY;
                         }
-                         if (nextCell.state !== newState) { // Vérifier si l'état change vraiment
+                        if (nextCell.state !== newState) {
                             nextCell.state = newState;
                             nextCell.infectionTimer = 0;
-                            changedCells.push({r, c}); // Ajouter aux cellules modifiées
+                            changedCells.push({ r, c });
                         }
-                    } else {
-                         // L'infection continue, pas de changement d'état visible, mais hasInfected est true
                     }
 
                     const neighbors = getNeighbors(r, c, params.infectionRadius);
                     neighbors.forEach(neighbor => {
-                        // Utiliser neighbor.r et neighbor.c pour accéder à nextGrid
                         const targetCellNext = nextGrid[neighbor.r][neighbor.c];
-                        // On vérifie seulement targetCellNext car getNeighbors retourne seulement les HEALTHY de grid (état actuel)
-                        // Et on s'assure qu'il n'a pas été infecté par un *autre* voisin dans ce même tick
                         if (targetCellNext.state === State.HEALTHY) {
                             const distance = neighbor.distance;
-                            let infectionProbability = params.infectionRate * Math.max(0, 1 - ((distance - 1) / Math.max(1, params.infectionRadius))); // Eviter division par 0 si rayon < 1
-                            infectionProbability = Math.min(params.infectionRate, Math.max(0, infectionProbability)); // Clamp entre 0 et taux max
+                            let infectionProbability = params.infectionRate * Math.max(0, 1 - ((distance - 1) / Math.max(1, params.infectionRadius)));
+                            infectionProbability = Math.min(params.infectionRate, Math.max(0, infectionProbability));
 
-                             if (infectionProbability > 0 && Math.random() < infectionProbability) {
-                                 targetCellNext.state = State.INFECTED;
-                                 targetCellNext.infectionTimer = 0;
-                                 changedCells.push({r: neighbor.r, c: neighbor.c}); // Ajouter aux cellules modifiées
-                                 hasInfected = true; // S'assurer que ça reste true si on vient d'infecter
-                             }
+                            if (infectionProbability > 0 && Math.random() < infectionProbability) {
+                                targetCellNext.state = State.INFECTED;
+                                targetCellNext.infectionTimer = 0;
+                                changedCells.push({ r: neighbor.r, c: neighbor.c });
+                                hasInfected = true;
+                            }
                         }
                     });
                 }
-                // Si la cellule n'était pas infectée, son état dans nextGrid est le même que dans grid
-                // sauf si elle vient d'être infectée par un voisin (géré ci-dessus)
             }
         }
 
         grid = nextGrid;
         tickCount++;
 
-        // Optimisation: Rendre seulement les cellules modifiées
         changedCells.forEach(cell => renderGridCell(cell.r, cell.c));
-        // Si aucune cellule n'a changé (rare mais possible), on ne fait rien visuellement
 
-        updateStats();
+        updateStats(); // This will call updateHistoryAndChart
 
         if (!hasInfected && isRunning) {
             pauseSimulation();
             console.log(`Simulation terminée au tick ${tickCount}: plus d'individus infectés.`);
-             // Optionnel: afficher un message à l'utilisateur
-             // alert(`Simulation terminée au tick ${tickCount}.`);
         }
     }
 
@@ -362,38 +390,40 @@ document.addEventListener('DOMContentLoaded', () => {
             sirChart.destroy();
             sirChart = null;
         }
-        if(!chartCanvas) {
+        if (!chartCanvas) {
             console.error("Canvas element for chart not found!");
             return;
         }
         const ctx = chartCanvas.getContext('2d');
+        // --- MODIFICATION: Use chart history for chart data ---
         sirChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: historyTicks,
+                labels: chartHistoryTicks, // Use chart history
                 datasets: [
                     {
-                        label: 'Sains (S)', data: historyHealthy,
+                        label: 'Sains (S)', data: chartHistoryHealthy, // Use chart history
                         borderColor: StateChartColors[State.HEALTHY], backgroundColor: StateChartColors[State.HEALTHY] + '33',
                         borderWidth: 2, fill: false, pointRadius: 0, tension: 0.1
                     },
                     {
-                        label: 'Infectés (I)', data: historyInfected,
+                        label: 'Infectés (I)', data: chartHistoryInfected, // Use chart history
                         borderColor: StateChartColors[State.INFECTED], backgroundColor: StateChartColors[State.INFECTED] + '33',
                         borderWidth: 2, fill: false, pointRadius: 0, tension: 0.1
                     },
                     {
-                        label: 'Guéris (R)', data: historyRecovered,
+                        label: 'Guéris (R)', data: chartHistoryRecovered, // Use chart history
                         borderColor: StateChartColors[State.RECOVERED], backgroundColor: StateChartColors[State.RECOVERED] + '33',
                         borderWidth: 2, fill: false, pointRadius: 0, tension: 0.1
                     },
                     {
-                        label: 'Morts (D)', data: historyDead,
+                        label: 'Morts (D)', data: chartHistoryDead, // Use chart history
                         borderColor: StateChartColors[State.DEAD], backgroundColor: StateChartColors[State.DEAD] + '33',
                         borderWidth: 2, fill: false, pointRadius: 0, tension: 0.1
                     }
                 ]
             },
+            // --- END MODIFICATION ---
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
                 hover: { animationDuration: 0 }, responsiveAnimationDuration: 0,
@@ -411,14 +441,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const size = params.gridSize;
         for (let row = 0; row < size; row++) {
             for (let col = 0; col < size; col++) {
-                 if(grid[row] && grid[row][col]) {
-                     const state = grid[row][col].state;
-                     if(state !== State.EMPTY) total++;
-                     if(state === State.HEALTHY) s++;
-                     else if (state === State.INFECTED) i++;
-                     else if (state === State.RECOVERED) r_val++;
-                     else if (state === State.DEAD) d++;
-                 }
+                if (grid[row] && grid[row][col]) {
+                    const state = grid[row][col].state;
+                    if (state !== State.EMPTY) total++;
+                    if (state === State.HEALTHY) s++;
+                    else if (state === State.INFECTED) i++;
+                    else if (state === State.RECOVERED) r_val++;
+                    else if (state === State.DEAD) d++;
+                }
             }
         }
         tickCountSpan.textContent = tickCount;
@@ -428,95 +458,119 @@ document.addEventListener('DOMContentLoaded', () => {
         mortCountSpan.textContent = d;
         totalCountSpan.textContent = total;
 
-        if(isRunning || tickCount === 0) {
-             updateHistoryAndChart(tickCount, s, i, r_val, d);
-        }
+        // Update history (both chart and full) regardless of whether simulation is running
+        // This ensures manual placements or the initial state (tick 0) are recorded.
+        updateHistoryAndChart(tickCount, s, i, r_val, d);
+
     }
 
     function updateHistoryAndChart(currentTick, s, i, r_val, d) {
-        // Ajouter les nouvelles données seulement si elles ne sont pas déjà présentes pour ce tick
-        if (historyTicks.length === 0 || historyTicks[historyTicks.length - 1] < currentTick) {
-            historyTicks.push(currentTick);
-            historyHealthy.push(s);
-            historyInfected.push(i);
-            historyRecovered.push(r_val);
-            historyDead.push(d);
-    
-            // Limiter la taille de l'historique
-            if (historyTicks.length > MAX_HISTORY_POINTS) {
-                historyTicks.shift();
-                historyHealthy.shift();
-                historyInfected.shift();
-                historyRecovered.shift();
-                historyDead.shift();
-            }
-        } else if (historyTicks[historyTicks.length - 1] === currentTick) {
-             // Si on est sur le même tick (ex: placement manuel), mettre à jour la dernière valeur
-             historyHealthy[historyHealthy.length - 1] = s;
-             historyInfected[historyInfected.length - 1] = i;
-             historyRecovered[historyRecovered.length - 1] = r_val;
-             historyDead[historyDead.length - 1] = d;
-        }
-    
-    
-        // Mettre à jour le graphique s'il est initialisé
-        if (sirChart) {
-            // **** MODIFICATION ICI ****
-            // Réassigner explicitement les données aux datasets.
-            // Même si ce sont des références, cela garantit que Chart.js
-            // voit bien les tableaux mis à jour, surtout après un reset.
-            sirChart.data.labels = historyTicks;
-            sirChart.data.datasets[0].data = historyHealthy;
-            sirChart.data.datasets[1].data = historyInfected;
-            sirChart.data.datasets[2].data = historyRecovered;
-            sirChart.data.datasets[3].data = historyDead;
-            // *************************
-    
-            sirChart.update('none'); // Redessiner le graphique sans animation
-        }
-     }
-    function startSimulation() {
-         if (isRunning) return;
-         updateParameterValues(); // S'assurer que les params sont à jour
+        // --- MODIFICATION: Update both chart and full history ---
+        let updateChart = false;
 
-         let initialInfectedFound = false;
-         let populationExists = false; // Vérifier s'il y a *au moins* un individu
-         for (let r = 0; r < params.gridSize; r++) {
+        // Update FULL History (always add)
+        // Check if tick already exists (e.g., from manual placement update)
+        const lastFullTick = fullHistoryTicks.length > 0 ? fullHistoryTicks[fullHistoryTicks.length - 1] : -1;
+        if (lastFullTick < currentTick) {
+            fullHistoryTicks.push(currentTick);
+            fullHistoryHealthy.push(s);
+            fullHistoryInfected.push(i);
+            fullHistoryRecovered.push(r_val);
+            fullHistoryDead.push(d);
+            updateChart = true; // New tick, update chart
+        } else if (lastFullTick === currentTick) {
+            // Update the last entry for the current tick (e.g., after manual placement)
+            fullHistoryHealthy[fullHistoryHealthy.length - 1] = s;
+            fullHistoryInfected[fullHistoryInfected.length - 1] = i;
+            fullHistoryRecovered[fullHistoryRecovered.length - 1] = r_val;
+            fullHistoryDead[fullHistoryDead.length - 1] = d;
+            updateChart = true; // Data changed, update chart
+        }
+
+        // Update CHART History (add and apply limit)
+        const lastChartTick = chartHistoryTicks.length > 0 ? chartHistoryTicks[chartHistoryTicks.length - 1] : -1;
+         if (lastChartTick < currentTick) {
+            chartHistoryTicks.push(currentTick);
+            chartHistoryHealthy.push(s);
+            chartHistoryInfected.push(i);
+            chartHistoryRecovered.push(r_val);
+            chartHistoryDead.push(d);
+
+            // Apply limit ONLY to chart history
+            if (chartHistoryTicks.length > MAX_CHART_HISTORY_POINTS) {
+                chartHistoryTicks.shift();
+                chartHistoryHealthy.shift();
+                chartHistoryInfected.shift();
+                chartHistoryRecovered.shift();
+                chartHistoryDead.shift();
+            }
+        } else if (lastChartTick === currentTick) {
+             // Update the last entry for the current tick if it exists in chart history
+             chartHistoryHealthy[chartHistoryHealthy.length - 1] = s;
+             chartHistoryInfected[chartHistoryInfected.length - 1] = i;
+             chartHistoryRecovered[chartHistoryRecovered.length - 1] = r_val;
+             chartHistoryDead[chartHistoryDead.length - 1] = d;
+        }
+        // --- END MODIFICATION ---
+
+
+        // Update the chart display if needed and chart object exists
+        if (updateChart && sirChart) {
+            // Assign the (potentially limited) chart history arrays to the chart datasets
+            sirChart.data.labels = chartHistoryTicks;
+            sirChart.data.datasets[0].data = chartHistoryHealthy;
+            sirChart.data.datasets[1].data = chartHistoryInfected;
+            sirChart.data.datasets[2].data = chartHistoryRecovered;
+            sirChart.data.datasets[3].data = chartHistoryDead;
+
+            sirChart.update('none'); // Redraw chart without animation
+        }
+    }
+
+    function startSimulation() {
+        if (isRunning) return;
+        updateParameterValues();
+
+        let initialInfectedFound = false;
+        let populationExists = false;
+        for (let r = 0; r < params.gridSize; r++) {
             for (let c = 0; c < params.gridSize; c++) {
-                if(grid[r] && grid[r][c]) {
-                    if(grid[r][c].state !== State.EMPTY) {
+                if (grid[r] && grid[r][c]) {
+                    if (grid[r][c].state !== State.EMPTY) {
                         populationExists = true;
                     }
-                    if(grid[r][c].state === State.INFECTED) {
+                    if (grid[r][c].state === State.INFECTED) {
                         initialInfectedFound = true;
                     }
                 }
+                if (populationExists && initialInfectedFound) break; // Optimization
             }
-         }
+             if (populationExists && initialInfectedFound) break; // Optimization
+        }
 
-         // Conditions d'arrêt avant démarrage
-         if (!populationExists) {
-             alert("Veuillez placer des individus sur la grille (mode manuel) ou définir une population > 0 avant de démarrer.");
-             return;
-         }
-         if (!initialInfectedFound) {
-             alert("Veuillez placer au moins un individu infecté sur la grille (cliquez sur un individu sain) ou vérifier le paramètre 'Nb. Infectés Initiaux'.");
-             return;
-         }
 
-         // Gérer le mode manuel
-         if (isManualPlacementMode) {
-             gridElement.removeEventListener('click', handleManualPlacementClick);
-             manualPlacementInfo.classList.add('hidden');
-         }
+        if (!populationExists) {
+            alert("Veuillez placer des individus sur la grille (mode manuel) ou définir une population > 0 avant de démarrer.");
+            return;
+        }
+        if (!initialInfectedFound) {
+            alert("Veuillez placer au moins un individu infecté sur la grille (cliquez sur un individu sain) ou vérifier le paramètre 'Nb. Infectés Initiaux'.");
+            return;
+        }
+
+        if (isManualPlacementMode) {
+            gridElement.removeEventListener('click', handleManualPlacementClick);
+            manualPlacementInfo.classList.add('hidden');
+        }
 
         isRunning = true;
         startButton.disabled = true;
         pauseButton.disabled = false;
         resetButton.disabled = true;
-        setControlsDisabled(true); // Désactiver les inputs/sliders (sauf vitesse)
+        setControlsDisabled(true);
 
-        updateStats(); // Assurer le point t=0 sur le graphique
+        // Ensure stats and chart show t=0 if it wasn't already added by reset/manual placement
+        updateStats();
 
         clearInterval(simulationInterval);
         simulationInterval = setInterval(simulationStep, params.tickSpeed);
@@ -524,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function pauseSimulation() {
-        if (!isRunning && !simulationInterval) return; // Ne rien faire si déjà arrêté
+        if (!isRunning && !simulationInterval) return;
 
         isRunning = false;
         clearInterval(simulationInterval);
@@ -534,46 +588,55 @@ document.addEventListener('DOMContentLoaded', () => {
         resetButton.disabled = false;
         setControlsDisabled(false);
 
-        // Réactiver le clic seulement si on est en mode manuel (identifié par params.manualPlacement)
         if (params.manualPlacement) {
-            isManualPlacementMode = true; // S'assurer que le flag est bien positionné
+            isManualPlacementMode = true;
             gridElement.addEventListener('click', handleManualPlacementClick);
             manualPlacementInfo.classList.remove('hidden');
         } else {
-            isManualPlacementMode = false; // S'assurer que le flag est bas
-            manualPlacementInfo.classList.add('hidden'); // Cacher le message
+            isManualPlacementMode = false;
+            manualPlacementInfo.classList.add('hidden');
         }
         console.log("Simulation en pause.");
     }
 
     function resetSimulation() {
-        pauseSimulation(); // Arrête la sim, nettoie l'intervalle, gère les listeners de clic
+        pauseSimulation();
         tickCount = 0;
-        updateParameterValues(); // Lire les valeurs actuelles des contrôles
+        updateParameterValues();
 
-        historyTicks = []; historyHealthy = []; historyInfected = [];
-        historyRecovered = []; historyDead = [];
+        // --- MODIFICATION: Clear both history sets ---
+        chartHistoryTicks = []; chartHistoryHealthy = []; chartHistoryInfected = [];
+        chartHistoryRecovered = []; chartHistoryDead = [];
+        fullHistoryTicks = []; fullHistoryHealthy = []; fullHistoryInfected = [];
+        fullHistoryRecovered = []; fullHistoryDead = [];
+        // --- END MODIFICATION ---
 
         initializeGridData(params.gridSize);
-        createGridDOM(params.gridSize); // Recrée la grille DOM (et gère le listener clic si manuel)
+        createGridDOM(params.gridSize);
 
-        // Le mode manuel est maintenant déterminé par params.manualPlacement
         isManualPlacementMode = params.manualPlacement;
         manualPlacementInfo.classList.toggle('hidden', !isManualPlacementMode);
 
         if (!isManualPlacementMode) {
-             populateGridRandomly(params.gridSize, params.populationSize, params.initialInfected);
+            populateGridRandomly(params.gridSize, params.populationSize, params.initialInfected);
         }
-        // Si manuel, la grille reste vide, l'utilisateur place via handleManualPlacementClick
 
-        renderGrid(); // Afficher l'état initial (peuplé ou vide)
-        updateStats(); // Mettre à jour compteurs et graphique à t=0
+        renderGrid();
+        updateStats(); // Update counts and add t=0 data to history arrays and chart
 
-        // Assurer que le graphique est (ré)initialisé et affiche t=0
+        // Ensure chart is initialized and points to the (now empty) chart history
         if (!sirChart) {
-             initializeChart();
+            initializeChart();
+        } else {
+            // Chart exists, just clear its data explicitly after reset
+             sirChart.data.labels = chartHistoryTicks;
+             sirChart.data.datasets[0].data = chartHistoryHealthy;
+             sirChart.data.datasets[1].data = chartHistoryInfected;
+             sirChart.data.datasets[2].data = chartHistoryRecovered;
+             sirChart.data.datasets[3].data = chartHistoryDead;
+             sirChart.update('none'); // Update display to show cleared chart
         }
-        // updateStats a déjà appelé updateHistoryAndChart, le graphique est à jour
+
 
         resetButton.disabled = false;
         startButton.disabled = false;
@@ -582,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Simulation réinitialisée.");
     }
 
-     function setControlsDisabled(disabled) {
+    function setControlsDisabled(disabled) {
         gridSizeInput.disabled = disabled;
         populationSizeInput.disabled = disabled;
         initialInfectedInput.disabled = disabled;
@@ -591,12 +654,14 @@ document.addEventListener('DOMContentLoaded', () => {
         infectionDurationSlider.disabled = disabled;
         mortalityRateSlider.disabled = disabled;
         immunityLevelSlider.disabled = disabled;
-        // tickSpeedSlider reste actif
+        // tickSpeedSlider remains active
     }
 
     // --- Initialisation et Écouteurs d'événements ---
     function init() {
         updateParameterValues();
+
+        exportCsvButton.addEventListener('click', exportDataToCsv);
 
         infectionRadiusSlider.addEventListener('input', updateParameterValues);
         infectionRateSlider.addEventListener('input', updateParameterValues);
@@ -611,7 +676,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 'change' est mieux que 'input' pour les champs number pour éviter reset à chaque chiffre tapé
         gridSizeInput.addEventListener('change', () => { updateParameterValues(); resetSimulation(); });
         populationSizeInput.addEventListener('change', () => { updateParameterValues(); resetSimulation(); });
         initialInfectedInput.addEventListener('change', () => { updateParameterValues(); resetSimulation(); });
@@ -620,10 +684,12 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseButton.addEventListener('click', pauseSimulation);
         resetButton.addEventListener('click', resetSimulation);
 
-        initializeChart(); // Initialiser le graphique une fois
-        resetSimulation(); // Configurer l'état initial complet (grille, stats, etc.)
+        // Initialiser le graphique et la simulation une fois
+        initializeChart();
+        resetSimulation(); // Setup initial state (calls updateStats, populates t=0 history)
     }
 
     init();
 
 });
+// --- END OF FILE script.js ---
