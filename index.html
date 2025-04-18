@@ -27,18 +27,38 @@
             height: 300px; /* Ajustez si nécessaire */
             width: 100%;
         }
+
+        /* Style pour rendre le panneau de contrôle défilable */
+        .control-panel-container {
+            max-height: 95vh; /* Limite la hauteur à 95% de la vue */
+            overflow-y: auto; /* Ajoute une barre de défilement si nécessaire */
+            /* Optionnel : Améliorer l'apparence de la barre de défilement (navigateurs Webkit) */
+            &::-webkit-scrollbar {
+                 width: 8px;
+            }
+            &::-webkit-scrollbar-track {
+                 background: #f1f1f1;
+                 border-radius: 10px;
+            }
+            &::-webkit-scrollbar-thumb {
+                 background: #a0aec0; /* gray-500 */
+                 border-radius: 10px;
+            }
+            &::-webkit-scrollbar-thumb:hover {
+                 background: #718096; /* gray-600 */
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 flex flex-col lg:flex-row min-h-screen">
 
     <!-- Panneau de Contrôle -->
-    <div class="w-full lg:w-1/4 lg:pr-4 mb-4 lg:mb-0 flex flex-col space-y-4">
+    <div class="w-full lg:w-1/4 lg:pr-4 mb-4 lg:mb-0 flex flex-col space-y-4 control-panel-container">
         <h1 class="text-2xl font-bold">Simulation SIR</h1>
 
         <!-- Paramètres Généraux -->
-        <div class="bg-white p-4 rounded shadow">
+        <div class="bg-white p-4 rounded shadow flex-shrink-0"> 
             <h2 class="text-lg font-semibold mb-2">Paramètres Généraux</h2>
-            <!-- ... (inputs gridSize, populationSize, initialInfected) ... -->
             <div class="mb-2">
                 <label for="gridSize" class="block text-sm font-medium text-gray-700">Taille Grille:</label>
                 <input type="number" id="gridSize" value="50" min="10" max="100" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
@@ -54,9 +74,8 @@
         </div>
 
         <!-- Paramètres Simulation -->
-        <div class="bg-white p-4 rounded shadow">
+        <div class="bg-white p-4 rounded shadow flex-shrink-0"> 
             <h2 class="text-lg font-semibold mb-2">Paramètres Simulation</h2>
-            <!-- ... (sliders infectionRadius, infectionRate, etc.) ... -->
             <div class="mb-2">
                 <label for="infectionRadius" class="block text-sm font-medium text-gray-700">Rayon d'infection: <span id="infectionRadiusValue">2</span></label>
                 <input type="range" id="infectionRadius" min="1" max="10" value="2" step="0.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
@@ -85,7 +104,7 @@
         </div>
 
         <!-- Contrôles -->
-        <div class="bg-white p-4 rounded shadow">
+        <div class="bg-white p-4 rounded shadow flex-shrink-0"> 
              <h2 class="text-lg font-semibold mb-2">Contrôles</h2>
              <div class="flex space-x-2 mb-2">
                  <button id="startButton" class="flex-1 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Démarrer</button>
@@ -96,7 +115,7 @@
         </div>
 
         <!-- Statistiques -->
-         <div class="bg-white p-4 rounded shadow">
+         <div class="bg-white p-4 rounded shadow flex-shrink-0"> 
             <h2 class="text-lg font-semibold mb-2">Statistiques (Tick: <span id="tickCount">0</span>)</h2>
             <p class="text-green-600">Sains: <span id="sainCount">0</span></p>
             <p class="text-red-600">Infectés: <span id="infecteCount">0</span></p>
@@ -105,8 +124,8 @@
             <p class="font-semibold">Total: <span id="totalCount">0</span></p>
          </div>
 
-         <!-- NOUVEAU: Graphique -->
-         <div class="bg-white p-4 rounded shadow">
+         <!-- Graphique -->
+         <div class="bg-white p-4 rounded shadow flex-shrink-0"> 
             <h2 class="text-lg font-semibold mb-2">Évolution Temporelle</h2>
             <div class="chart-container">
                 <canvas id="sirChartCanvas"></canvas>
@@ -123,6 +142,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.0"></script>
+    <!-- Liaison au fichier JavaScript -->
+    <script src="script.js?v=1.0.1"></script>
 </body>
 </html>
