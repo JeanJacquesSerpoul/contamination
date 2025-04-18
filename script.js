@@ -434,31 +434,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateHistoryAndChart(currentTick, s, i, r_val, d) {
+        // Ajouter les nouvelles données seulement si elles ne sont pas déjà présentes pour ce tick
         if (historyTicks.length === 0 || historyTicks[historyTicks.length - 1] < currentTick) {
             historyTicks.push(currentTick);
             historyHealthy.push(s);
             historyInfected.push(i);
             historyRecovered.push(r_val);
             historyDead.push(d);
-
+    
+            // Limiter la taille de l'historique
             if (historyTicks.length > MAX_HISTORY_POINTS) {
-                historyTicks.shift(); historyHealthy.shift(); historyInfected.shift();
-                historyRecovered.shift(); historyDead.shift();
+                historyTicks.shift();
+                historyHealthy.shift();
+                historyInfected.shift();
+                historyRecovered.shift();
+                historyDead.shift();
             }
         } else if (historyTicks[historyTicks.length - 1] === currentTick) {
+             // Si on est sur le même tick (ex: placement manuel), mettre à jour la dernière valeur
              historyHealthy[historyHealthy.length - 1] = s;
              historyInfected[historyInfected.length - 1] = i;
              historyRecovered[historyRecovered.length - 1] = r_val;
              historyDead[historyDead.length - 1] = d;
         }
-
+    
+    
+        // Mettre à jour le graphique s'il est initialisé
         if (sirChart) {
+            // **** MODIFICATION ICI ****
+            // Réassigner explicitement les données aux datasets.
+            // Même si ce sont des références, cela garantit que Chart.js
+            // voit bien les tableaux mis à jour, surtout après un reset.
             sirChart.data.labels = historyTicks;
-            // Les données des datasets sont des références aux tableaux, pas besoin de les réassigner
-            sirChart.update('none');
+            sirChart.data.datasets[0].data = historyHealthy;
+            sirChart.data.datasets[1].data = historyInfected;
+            sirChart.data.datasets[2].data = historyRecovered;
+            sirChart.data.datasets[3].data = historyDead;
+            // *************************
+    
+            sirChart.update('none'); // Redessiner le graphique sans animation
         }
-    }
-
+     }
     function startSimulation() {
          if (isRunning) return;
          updateParameterValues(); // S'assurer que les params sont à jour
