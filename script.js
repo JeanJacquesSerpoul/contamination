@@ -39,7 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
         manualPlacement: false
     };
 
-    let grid = [];
+    // Nouvelle structure de données optimisée
+    let gridSize = 0;
+    let gridArea = 0;
+    let currentStateGrid = null;
+    let nextStateGrid = null;
+    let currentTimerGrid = null;
+    let nextTimerGrid = null;
+    
     let gridCells = [];
     let simulationInterval = null;
     let tickCount = 0;
@@ -203,13 +210,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initializeGridData(size) {
-        grid = [];
-        for (let r = 0; r < size; r++) {
-            grid[r] = [];
-            for (let c = 0; c < size; c++) {
-                grid[r][c] = { state: State.EMPTY, infectionTimer: 0 };
-            }
-        }
+        gridSize = size;
+        gridArea = size * size;
+        
+        // Création des buffers pour le double buffering
+        currentStateGrid = new Uint8Array(gridArea);
+        nextStateGrid = new Uint8Array(gridArea);
+        currentTimerGrid = new Uint8Array(gridArea);
+        nextTimerGrid = new Uint8Array(gridArea);
+        
+        // Initialisation
+        currentStateGrid.fill(State.EMPTY);
+        nextStateGrid.fill(State.EMPTY);
+        currentTimerGrid.fill(0);
+        nextTimerGrid.fill(0);
     }
 
     function populateGridRandomly(size, count, initialInfectedCount) {
@@ -224,10 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const maxAttempts = size * size * 2;
 
         while (placed < count && attempts < maxAttempts) {
-            const r = Math.floor(Math.random() * size);
-            const c = Math.floor(Math.random() * size);
-            if (grid[r][c].state === State.EMPTY) {
-                grid[r][c].state = State.HEALTHY;
+            const index = Math.floor(Math.random() * gridArea);
+            if (currentStateGrid[index] === State.EMPTY) {
+                currentStateGrid[index] = State.HEALTHY;
                 placed++;
             }
             attempts++;
@@ -235,22 +248,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (attempts >= maxAttempts) console.warn("Could not place all individuals (random placement).");
 
         let infectedPlaced = 0;
-        const healthyIndividualsCoords = [];
-        for (let r = 0; r < size; r++) {
-            for (let c = 0; c < size; c++) {
-                if (grid[r][c].state === State.HEALTHY) {
-                    healthyIndividualsCoords.push({ r, c });
-                }
+        const healthyIndices = [];
+        for (let i = 0; i < gridArea; i++) {
+            if (currentStateGrid[i] === State.HEALTHY) {
+                healthyIndices.push(i);
             }
         }
 
-        healthyIndividualsCoords.sort(() => Math.random() - 0.5);
+        healthyIndices.sort(() => Math.random() - 0.5);
 
-        const numToInfect = Math.min(initialInfectedCount, healthyIndividualsCoords.length);
+        const numToInfect = Math.min(initialInfectedCount, healthyIndices.length);
         for (let i = 0; i < numToInfect; i++) {
-            const coord = healthyIndividualsCoords[i];
-            grid[coord.r][coord.c].state = State.INFECTED;
-            grid[coord.r][coord.c].infectionTimer = 0;
+            const index = healthyIndices[i];
+            currentStateGrid[index] = State.INFECTED;
+            currentTimerGrid[index] = 0;
             infectedPlaced++;
         }
 
@@ -270,37 +281,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (r < 0 || r >= params.gridSize || c < 0 || c >= params.gridSize) return;
 
-        const currentCell = grid[r][c];
+        const index = r * params.gridSize + c;
+        const currentState = currentStateGrid[index];
 
-        if (currentCell.state === State.EMPTY) {
-            currentCell.state = State.HEALTHY;
-        } else if (currentCell.state === State.HEALTHY) {
-            currentCell.state = State.INFECTED;
-            currentCell.infectionTimer = 0;
+        if (currentState === State.EMPTY) {
+            currentStateGrid[index] = State.HEALTHY;
+        } else if (currentState === State.HEALTHY) {
+            currentStateGrid[index] = State.INFECTED;
+            currentTimerGrid[index] = 0;
         } else { // Infected, Recovered, or Dead go back to Empty
-             currentCell.state = State.EMPTY;
-             currentCell.infectionTimer = 0; // Reset timer just in case
+             currentStateGrid[index] = State.EMPTY;
+             currentTimerGrid[index] = 0;
         }
         renderGridCell(r, c);
         updateStats(); // Update stats and chart for the manual change
     }
 
     function renderGridCell(r, c) {
-        // Check if cell exists before accessing state/elements
-        if (grid[r]?.[c] && gridCells[r]?.[c]) {
-            const cellData = grid[r][c];
-            const cellElement = gridCells[r][c];
-            const newStateClass = StateGridClasses[cellData.state];
+        if (r < 0 || r >= gridSize || c < 0 || c >= gridSize) return;
+        if (!gridCells[r]?.[c]) return;
+        
+        const index = r * gridSize + c;
+        const state = currentStateGrid[index];
+        const cellElement = gridCells[r][c];
+        const newStateClass = StateGridClasses[state];
 
-            let newClassName = 'cell';
-            if (newStateClass) {
-                newClassName += ' ' + newStateClass;
-            }
+        let newClassName = 'cell';
+        if (newStateClass) {
+            newClassName += ' ' + newStateClass;
+        }
 
-            // Optimization: Only update className if it actually changed
-            if (cellElement.className !== newClassName) {
-                cellElement.className = newClassName;
-            }
+        // Optimization: Only update className if it actually changed
+        if (cellElement.className !== newClassName) {
+            cellElement.className = newClassName;
         }
     }
 
@@ -377,66 +390,90 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function simulationStep() {
-        // console.time("simulationStep Duration"); // Optional: Uncomment to measure step time
+        const startTime = performance.now();
         const size = params.gridSize;
-        const nextGrid = JSON.parse(JSON.stringify(grid));
         let hasInfected = false;
-        let changedCells = []; // Track cells that actually changed state this tick
+        let changedIndices = []; // Track indices that changed
 
-        for (let r = 0; r < size; r++) {
-            for (let c = 0; c < size; c++) {
-                const currentCell = grid[r][c];
-                const nextCell = nextGrid[r][c]; // Operate on the copy
-
-                if (currentCell.state === State.INFECTED) {
-                    hasInfected = true;
-                    nextCell.infectionTimer++;
-
-                    if (nextCell.infectionTimer >= params.infectionDuration) {
-                        let newState;
-                        if (Math.random() < params.mortalityRate) {
-                            newState = State.DEAD;
-                        } else {
-                            newState = (Math.random() < params.immunityLevel) ? State.RECOVERED : State.HEALTHY;
-                        }
-                        // Only record change if state actually differs
-                        if (nextCell.state !== newState) {
-                             nextCell.state = newState;
-                             nextCell.infectionTimer = 0;
-                             changedCells.push({ r, c });
-                        }
-                    } else {
-                        const neighbors = getNeighbors(r, c, params.infectionRadius);
-                        neighbors.forEach(neighbor => {
-                            const targetCellNext = nextGrid[neighbor.r][neighbor.c];
-                            // Check target in NEXT grid is still healthy (prevent double infection)
-                            if (targetCellNext.state === State.HEALTHY) {
-                                const distance = neighbor.distance;
-                                // Calculate infection probability based on distance (closer = higher chance, up to base rate)
-                                let infectionProbability = params.infectionRate * Math.max(0, 1 - ((distance - 1) / Math.max(1, params.infectionRadius)));
-                                infectionProbability = Math.min(params.infectionRate, Math.max(0, infectionProbability)); // Clamp probability
-
-                                if (infectionProbability > 0 && Math.random() < infectionProbability) {
-                                    // Only record change if state actually differs (it will here)
-                                    targetCellNext.state = State.INFECTED;
-                                    targetCellNext.infectionTimer = 0;
-                                    changedCells.push({ r: neighbor.r, c: neighbor.c });
-                                    // Keep hasInfected = true (even if already true)
-                                    hasInfected = true;
-                                }
-                            }
-                        });
-                    }
-                }
-                 // Note: No need to explicitly add unchanged cells to changedCells
+        // Pré-calcul des offsets de voisinage
+        const neighborOffsets = [];
+        const radius = params.infectionRadius;
+        const radiusInt = Math.ceil(radius);
+        for (let dr = -radiusInt; dr <= radiusInt; dr++) {
+            for (let dc = -radiusInt; dc <= radiusInt; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const dist = Math.sqrt(dr*dr + dc*dc);
+                if (dist <= radius) neighborOffsets.push([dr, dc]);
             }
         }
 
-        grid = nextGrid;
+        // Copier l'état courant dans nextGrid pour le nouveau calcul
+        nextStateGrid.set(currentStateGrid);
+        nextTimerGrid.set(currentTimerGrid);
+
+        for (let index = 0; index < gridArea; index++) {
+            const r = Math.floor(index / size);
+            const c = index % size;
+            const currentState = currentStateGrid[index];
+            const currentTimer = currentTimerGrid[index];
+
+            if (currentState === State.INFECTED) {
+                hasInfected = true;
+                const newTimer = currentTimer + 1;
+                nextTimerGrid[index] = newTimer;
+
+                if (newTimer >= params.infectionDuration) {
+                    let newState;
+                    if (Math.random() < params.mortalityRate) {
+                        newState = State.DEAD;
+                    } else {
+                        newState = (Math.random() < params.immunityLevel) ? State.RECOVERED : State.HEALTHY;
+                    }
+                    
+                    if (nextStateGrid[index] !== newState) {
+                        nextStateGrid[index] = newState;
+                        nextTimerGrid[index] = 0;
+                        changedIndices.push(index);
+                    }
+                } else {
+                    // Propagation de l'infection aux voisins
+                    for (const [dr, dc] of neighborOffsets) {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+                        
+                        const neighborIndex = nr * size + nc;
+                        if (currentStateGrid[neighborIndex] === State.HEALTHY) {
+                            const distance = Math.sqrt(dr*dr + dc*dc);
+                            let infectionProbability = params.infectionRate * Math.max(0, 1 - ((distance - 1) / Math.max(1, radius)));
+                            infectionProbability = Math.min(params.infectionRate, Math.max(0, infectionProbability));
+                            
+                            if (infectionProbability > 0 && Math.random() < infectionProbability) {
+                                if (nextStateGrid[neighborIndex] !== State.INFECTED) {
+                                    nextStateGrid[neighborIndex] = State.INFECTED;
+                                    nextTimerGrid[neighborIndex] = 0;
+                                    changedIndices.push(neighborIndex);
+                                    hasInfected = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Échange des buffers
+        [currentStateGrid, nextStateGrid] = [nextStateGrid, currentStateGrid];
+        [currentTimerGrid, nextTimerGrid] = [nextTimerGrid, currentTimerGrid];
+        
         tickCount++;
 
-        // Optimized rendering: only update cells that actually changed
-        changedCells.forEach(cell => renderGridCell(cell.r, cell.c));
+        // Mise à jour du rendu uniquement pour les cellules modifiées
+        changedIndices.forEach(index => {
+            const r = Math.floor(index / size);
+            const c = index % size;
+            renderGridCell(r, c);
+        });
 
         updateStats();
 
@@ -446,7 +483,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Simulation terminée au tick ${finalTick}: plus d'individus infectés.`);
             showEndMessage(finalTick);
         }
-        // console.timeEnd("simulationStep Duration"); // Optional: Uncomment to measure step time
+
+        // Mesure de performance
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        if (tickCount % 10 === 0) {
+            console.log(`Tick ${tickCount} traité en ${duration.toFixed(2)}ms`);
+        }
     }
 
 
@@ -485,19 +528,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateStats() {
         let s = 0, i = 0, r_val = 0, d = 0, total = 0;
-        const size = params.gridSize;
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
-                if (grid[row]?.[col]) { // Check cell exists
-                    const state = grid[row][col].state;
-                    if (state !== State.EMPTY) total++;
-                    if (state === State.HEALTHY) s++;
-                    else if (state === State.INFECTED) i++;
-                    else if (state === State.RECOVERED) r_val++;
-                    else if (state === State.DEAD) d++;
-                }
-            }
+        
+        for (let index = 0; index < gridArea; index++) {
+            const state = currentStateGrid[index];
+            if (state !== State.EMPTY) total++;
+            if (state === State.HEALTHY) s++;
+            else if (state === State.INFECTED) i++;
+            else if (state === State.RECOVERED) r_val++;
+            else if (state === State.DEAD) d++;
         }
+        
         tickCountSpan.textContent = tickCount;
         sainCountSpan.textContent = s;
         infecteCountSpan.textContent = i;
@@ -586,19 +626,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Population check ---
         let populationExists = false;
         let initialInfectedFound = false;
-        outerLoop:
-        for (let r = 0; r < params.gridSize; r++) {
-            for (let c = 0; c < params.gridSize; c++) {
-                 if (grid[r]?.[c]?.state && grid[r][c].state !== State.EMPTY) {
-                    populationExists = true;
-                    if (grid[r][c].state === State.INFECTED) {
-                        initialInfectedFound = true;
-                        break outerLoop; // No need to check further if infected found
-                    }
-                 }
+        
+        for (let i = 0; i < gridArea; i++) {
+            const state = currentStateGrid[i];
+            if (state !== State.EMPTY) {
+                populationExists = true;
+                if (state === State.INFECTED) {
+                    initialInfectedFound = true;
+                    break; // Found infected, no need to check further
+                }
             }
         }
-         if (!populationExists) {
+        
+        if (!populationExists) {
             alert("Veuillez placer des individus sur la grille (mode manuel) ou définir une population > 0 avant de démarrer.");
             return;
         }
