@@ -188,7 +188,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createGridDOM(size) {
         gridElement.innerHTML = '';
-        gridElement.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
+        
+        // Calculer la taille des cellules en fonction de la largeur du conteneur
+        const containerWidth = gridContainerElement.clientWidth;
+        const cellSize = Math.max(2, Math.floor(containerWidth / size));
+        gridElement.style.gridTemplateColumns = `repeat(${size}, ${cellSize}px)`;
+        
         gridCells = [];
 
         for (let r = 0; r < size; r++) {
@@ -198,6 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell.className = `cell ${StateGridClasses[State.EMPTY]}`;
                 cell.dataset.r = r;
                 cell.dataset.c = c;
+                
+                // Définir la largeur et la hauteur pour chaque cellule
+                cell.style.width = `${cellSize}px`;
+                cell.style.height = `${cellSize}px`;
+                
                 gridElement.appendChild(cell);
                 gridCells[r][c] = cell;
             }

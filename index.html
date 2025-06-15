@@ -12,10 +12,9 @@
     <style>
         /* Styles additionnels si besoin */
         .cell {
-            width: 10px;
-            /* Taille fixe pour référence dans JS, mais la grille s'adapte au conteneur */
-            height: 10px;
+            aspect-ratio: 1; /* Garder un ratio carré */
             border: 1px solid #eee;
+            /* La taille sera contrôlée par la grille CSS */
         }
 
         .sain { background-color: #4ade80; /* green-400 */ }
@@ -163,7 +162,7 @@
 
     <!-- Zone de Simulation -->
     <div class="w-full lg:w-3/4 flex justify-center items-center lg:items-start lg:pl-4 flex-grow">
-        <div id="gridContainer" class="bg-white shadow-lg overflow-auto w-full max-w-full h-[70vh] sm:h-[70vh] lg:max-h-[90vh]">
+        <div id="gridContainer" class="bg-white shadow-lg overflow-auto w-full max-w-full aspect-square max-h-[90vh]">
             <div id="grid" class="border border-gray-300" style="grid-template-columns: repeat(50, minmax(0, 1fr));">
                 <!-- Les cellules seront ajoutées ici par JS -->
             </div>
