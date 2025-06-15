@@ -754,6 +754,14 @@ document.addEventListener('DOMContentLoaded', () => {
         immunityLevelSlider.disabled = disabled;
         // tickSpeedSlider remains active so speed can be changed during run
     }
+    
+    // Handle window resize for mobile responsiveness
+    function handleResize() {
+        if (gridSize > 0) {
+            createGridDOM(gridSize);
+            renderGrid();
+        }
+    }
 
     // --- Initialisation ---
     function init() {
@@ -795,6 +803,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 hideEndMessage();
             }
         });
+        
+        // Add resize handler for mobile responsiveness
+        window.addEventListener('resize', handleResize);
 
         // Initial setup actions
         initializeChart(); // Create the chart instance
