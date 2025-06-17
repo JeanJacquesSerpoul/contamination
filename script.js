@@ -592,12 +592,17 @@ document.addEventListener('DOMContentLoaded', () => {
         immunityLevelSlider.disabled = disabled;
     }
     
+    // --- BUG FIX START ---
+    // The original function would wipe the grid on window resize but not redraw the individuals.
+    // By adding `renderGrid()`, we ensure that after the DOM elements are recreated,
+    // their visual state is immediately synced with the simulation's data model.
     function handleResize() {
         if (params.gridSize > 0) {
             createGridDOM(params.gridSize);
-            renderGrid();
+            renderGrid(); // This line was missing or ineffective, causing the grid to appear empty.
         }
     }
+    // --- BUG FIX END ---
 
     // --- Initialisation ---
     function init() {
