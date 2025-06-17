@@ -10,11 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
         DEAD: 4,
     };
 
+    // Couleurs alignées sur le thème "coffee" de DaisyUI pour Chart.js
     const StateChartColors = {
-        [State.HEALTHY]: 'rgb(74, 222, 128)', // green-400
-        [State.INFECTED]: 'rgb(248, 113, 113)', // red-400
-        [State.RECOVERED]: 'rgb(96, 165, 250)', // blue-400
-        [State.DEAD]: 'rgb(113, 113, 122)', // zinc-500
+        [State.HEALTHY]: 'rgb(25, 147, 51)',   // coffee theme 'success' (#199333)
+        [State.INFECTED]: 'rgb(255, 0, 0)',      // coffee theme 'error' (#ff0000)
+        [State.RECOVERED]: 'rgb(0, 145, 213)',  // coffee theme 'info' (#0091d5)
+        [State.DEAD]: 'rgb(38, 23, 18)',       // coffee theme 'neutral' (#261712)
     };
 
     const StateGridClasses = {
@@ -34,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         infectionDuration: 50,
         mortalityRate: 0.05,
         immunityLevel: 0.90,
-        actualDelayMs: 910, // Initial default delay (will be overwritten by updateParameterValues)
-        tickSpeedSetting: 100, // Default slider setting
+        actualDelayMs: 910, 
+        tickSpeedSetting: 100, 
         manualPlacement: false
     };
 
@@ -48,15 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let sirChart = null;
 
-    // History for the chart (limited size for performance)
     let chartHistoryTicks = [];
     let chartHistoryHealthy = [];
     let chartHistoryInfected = [];
     let chartHistoryRecovered = [];
     let chartHistoryDead = [];
-    const MAX_CHART_HISTORY_POINTS = 500; // Limit for the chart
+    const MAX_CHART_HISTORY_POINTS = 500;
 
-    // Complete history for CSV export (unlimited)
     let fullHistoryTicks = [];
     let fullHistoryHealthy = [];
     let fullHistoryInfected = [];
@@ -65,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Element References
     const gridElement = document.getElementById('grid');
-    const gridContainerElement = document.getElementById('gridContainer');
     const gridSizeInput = document.getElementById('gridSize');
     const populationSizeInput = document.getElementById('populationSize');
     const initialInfectedInput = document.getElementById('initialInfected');
@@ -97,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartCanvas = document.getElementById('sirChartCanvas');
     const exportCsvButton = document.getElementById('exportCsvButton');
 
-    // References for end message
     const endMessageOverlay = document.getElementById('endMessageOverlay');
     const endMessageBox = document.getElementById('endMessageBox');
     const endMessageDetails = document.getElementById('endMessageDetails');
@@ -169,11 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createGridDOM(size) {
         gridElement.innerHTML = '';
-        
-        // AMÉLIORATION : Laisser CSS Grid et `aspect-ratio` gérer la taille des cellules.
-        // Cela rend le code plus simple et plus fiable.
         gridElement.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
-        
         gridCells = [];
 
         for (let r = 0; r < size; r++) {
@@ -183,12 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell.className = `cell ${StateGridClasses[State.EMPTY]}`;
                 cell.dataset.r = r;
                 cell.dataset.c = c;
-                
-                // AMÉLIORATION : Ces lignes sont inutiles car la taille est gérée par CSS.
-                // Les supprimer simplifie le code.
-                // cell.style.width = `${cellSize}px`;
-                // cell.style.height = `${cellSize}px`;
-                
                 gridElement.appendChild(cell);
                 gridCells[r][c] = cell;
             }
@@ -213,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateGridRandomly(size, count, initialInfectedCount) {
         if (count <= 0) return;
         if (count > size * size) {
-            console.warn("Population size exceeds grid capacity.");
             count = size * size;
         }
 
@@ -230,9 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             attempts++;
         }
-        if (attempts >= maxAttempts) console.warn("Could not place all individuals (random placement).");
 
-        let infectedPlaced = 0;
         const healthyIndividualsCoords = [];
         for (let r = 0; r < size; r++) {
             for (let c = 0; c < size; c++) {
@@ -249,33 +233,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const coord = healthyIndividualsCoords[i];
             grid[coord.r][coord.c].state = State.INFECTED;
             grid[coord.r][coord.c].infectionTimer = 0;
-            infectedPlaced++;
-        }
-
-        if (infectedPlaced < initialInfectedCount && numToInfect > 0 && !params.manualPlacement) {
-            console.warn(`Could only place ${infectedPlaced} out of ${initialInfectedCount} initial infected individuals.`);
         }
     }
 
     function handleManualPlacementClick(event) {
         if (!isManualPlacementMode || isRunning) return;
-
         const cellElement = event.target.closest('.cell');
         if (!cellElement) return;
 
         const r = parseInt(cellElement.dataset.r);
         const c = parseInt(cellElement.dataset.c);
-
         if (r < 0 || r >= params.gridSize || c < 0 || c >= params.gridSize) return;
 
         const currentCell = grid[r][c];
-
         if (currentCell.state === State.EMPTY) {
             currentCell.state = State.HEALTHY;
         } else if (currentCell.state === State.HEALTHY) {
             currentCell.state = State.INFECTED;
             currentCell.infectionTimer = 0;
-        } else { // Infected, Recovered, or Dead go back to Empty
+        } else {
              currentCell.state = State.EMPTY;
              currentCell.infectionTimer = 0;
         }
@@ -288,8 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const cellData = grid[r][c];
             const cellElement = gridCells[r][c];
             const newStateClass = StateGridClasses[cellData.state];
-            
-            // L'optimisation ici est excellente, on la garde.
             let newClassName = `cell ${newStateClass}`;
             if (cellElement.className !== newClassName) {
                 cellElement.className = newClassName;
@@ -320,12 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let nr = r_min; nr <= r_max; nr++) {
             for (let nc = c_min; nc <= c_max; nc++) {
                 if ((nr === r && nc === c) || !grid[nr]?.[nc]) continue;
-
                 const dist = calculateDistance(r, c, nr, nc);
-                if (dist <= radius) {
-                    if (grid[nr][nc].state === State.HEALTHY) {
-                       neighbors.push({ r: nr, c: nc, distance: dist });
-                    }
+                if (dist <= radius && grid[nr][nc].state === State.HEALTHY) {
+                   neighbors.push({ r: nr, c: nc, distance: dist });
                 }
             }
         }
@@ -360,8 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function simulationStep() {
         const size = params.gridSize;
-        
-        // AMÉLIORATION : Remplacer JSON.parse/stringify par une copie manuelle plus performante.
         const nextGrid = [];
         for (let r = 0; r < size; r++) {
             nextGrid[r] = [];
@@ -383,12 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     nextCell.infectionTimer++;
 
                     if (nextCell.infectionTimer >= params.infectionDuration) {
-                        let newState;
-                        if (Math.random() < params.mortalityRate) {
-                            newState = State.DEAD;
-                        } else {
-                            newState = (Math.random() < params.immunityLevel) ? State.RECOVERED : State.HEALTHY;
-                        }
+                        let newState = (Math.random() < params.mortalityRate) ? State.DEAD :
+                                       (Math.random() < params.immunityLevel) ? State.RECOVERED : State.HEALTHY;
                         if (nextCell.state !== newState) {
                              nextCell.state = newState;
                              nextCell.infectionTimer = 0;
@@ -401,8 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (targetCellNext.state === State.HEALTHY) {
                                 const distance = neighbor.distance;
                                 let infectionProbability = params.infectionRate * Math.max(0, 1 - ((distance - 1) / Math.max(1, params.infectionRadius)));
-                                infectionProbability = Math.min(params.infectionRate, Math.max(0, infectionProbability));
-
                                 if (infectionProbability > 0 && Math.random() < infectionProbability) {
                                     targetCellNext.state = State.INFECTED;
                                     targetCellNext.infectionTimer = 0;
@@ -450,12 +413,11 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
-                hover: { animationDuration: 0 }, responsiveAnimationDuration: 0,
                 scales: {
-                    x: { title: { display: true, text: 'Temps (Ticks)' } },
-                    y: { title: { display: true, text: 'Nombre d\'individus' }, beginAtZero: true, min: 0 }
+                    x: { title: { display: true, text: 'Temps (Ticks)', color: 'hsl(var(--bc))' }, ticks: { color: 'hsl(var(--bc))' }, grid: { color: 'hsl(var(--b3))' } },
+                    y: { title: { display: true, text: 'Nombre d\'individus', color: 'hsl(var(--bc))' }, beginAtZero: true, min: 0, ticks: { color: 'hsl(var(--bc))' }, grid: { color: 'hsl(var(--b3))' } }
                 },
-                plugins: { legend: { position: 'top' }, title: { display: false } }
+                plugins: { legend: { position: 'top', labels: { color: 'hsl(var(--bc))' } }, title: { display: false } }
             }
         });
     }
@@ -488,55 +450,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateHistoryAndChart(currentTick, s, i, r_val, d) {
         let updateChartNeeded = false;
 
-        const lastFullTick = fullHistoryTicks.length > 0 ? fullHistoryTicks[fullHistoryTicks.length - 1] : -1;
-        if (lastFullTick < currentTick) {
-            fullHistoryTicks.push(currentTick);
-            fullHistoryHealthy.push(s);
-            fullHistoryInfected.push(i);
-            fullHistoryRecovered.push(r_val);
-            fullHistoryDead.push(d);
-            updateChartNeeded = true;
-        } else if (lastFullTick === currentTick) {
-            if (fullHistoryHealthy[fullHistoryHealthy.length - 1] !== s ||
-                fullHistoryInfected[fullHistoryInfected.length - 1] !== i ||
-                fullHistoryRecovered[fullHistoryRecovered.length - 1] !== r_val ||
-                fullHistoryDead[fullHistoryDead.length - 1] !== d) {
-                fullHistoryHealthy[fullHistoryHealthy.length - 1] = s;
-                fullHistoryInfected[fullHistoryInfected.length - 1] = i;
-                fullHistoryRecovered[fullHistoryRecovered.length - 1] = r_val;
-                fullHistoryDead[fullHistoryDead.length - 1] = d;
-                updateChartNeeded = true;
-            }
-        }
+        fullHistoryTicks.push(currentTick);
+        fullHistoryHealthy.push(s);
+        fullHistoryInfected.push(i);
+        fullHistoryRecovered.push(r_val);
+        fullHistoryDead.push(d);
+        
+        chartHistoryTicks.push(currentTick);
+        chartHistoryHealthy.push(s);
+        chartHistoryInfected.push(i);
+        chartHistoryRecovered.push(r_val);
+        chartHistoryDead.push(d);
 
-        const lastChartTick = chartHistoryTicks.length > 0 ? chartHistoryTicks[chartHistoryTicks.length - 1] : -1;
-         if (lastChartTick < currentTick) {
-            chartHistoryTicks.push(currentTick);
-            chartHistoryHealthy.push(s);
-            chartHistoryInfected.push(i);
-            chartHistoryRecovered.push(r_val);
-            chartHistoryDead.push(d);
-
-            if (chartHistoryTicks.length > MAX_CHART_HISTORY_POINTS) {
-                chartHistoryTicks.shift();
-                chartHistoryHealthy.shift();
-                chartHistoryInfected.shift();
-                chartHistoryRecovered.shift();
-                chartHistoryDead.shift();
-            }
-            updateChartNeeded = true;
-        } else if (lastChartTick === currentTick) {
-            if (chartHistoryHealthy[chartHistoryHealthy.length - 1] !== s ||
-                chartHistoryInfected[chartHistoryInfected.length - 1] !== i ||
-                chartHistoryRecovered[chartHistoryRecovered.length - 1] !== r_val ||
-                chartHistoryDead[chartHistoryDead.length - 1] !== d) {
-                 chartHistoryHealthy[chartHistoryHealthy.length - 1] = s;
-                 chartHistoryInfected[chartHistoryInfected.length - 1] = i;
-                 chartHistoryRecovered[chartHistoryRecovered.length - 1] = r_val;
-                 chartHistoryDead[chartHistoryDead.length - 1] = d;
-                 updateChartNeeded = true;
-             }
+        if (chartHistoryTicks.length > MAX_CHART_HISTORY_POINTS) {
+            chartHistoryTicks.shift();
+            chartHistoryHealthy.shift();
+            chartHistoryInfected.shift();
+            chartHistoryRecovered.shift();
+            chartHistoryDead.shift();
         }
+        updateChartNeeded = true;
         
         if (updateChartNeeded && sirChart) {
             sirChart.data.labels = chartHistoryTicks;
@@ -554,17 +487,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let populationExists = false;
         let initialInfectedFound = false;
-        outerLoop:
         for (let r = 0; r < params.gridSize; r++) {
             for (let c = 0; c < params.gridSize; c++) {
                  if (grid[r]?.[c]?.state && grid[r][c].state !== State.EMPTY) {
                     populationExists = true;
                     if (grid[r][c].state === State.INFECTED) {
                         initialInfectedFound = true;
-                        break outerLoop;
+                        break;
                     }
                  }
             }
+            if (initialInfectedFound) break;
         }
          if (!populationExists) {
             alert("Veuillez placer des individus sur la grille (mode manuel) ou définir une population > 0 avant de démarrer.");
@@ -585,16 +518,13 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseButton.disabled = false;
         resetButton.disabled = true;
         setControlsDisabled(true);
-
         updateStats();
-
         clearInterval(simulationInterval);
         simulationInterval = setInterval(simulationStep, params.actualDelayMs);
     }
 
     function pauseSimulation() {
         if (!isRunning && !simulationInterval) return;
-
         isRunning = false;
         clearInterval(simulationInterval);
         simulationInterval = null;
@@ -610,7 +540,6 @@ document.addEventListener('DOMContentLoaded', () => {
             manualPlacementInfo.classList.remove('hidden');
         } else {
             isManualPlacementMode = false;
-            manualPlacementInfo.classList.add('hidden');
         }
     }
 
@@ -642,10 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeChart();
         } else {
              sirChart.data.labels = chartHistoryTicks;
-             sirChart.data.datasets[0].data = chartHistoryHealthy;
-             sirChart.data.datasets[1].data = chartHistoryInfected;
-             sirChart.data.datasets[2].data = chartHistoryRecovered;
-             sirChart.data.datasets[3].data = chartHistoryDead;
+             sirChart.data.datasets.forEach(dataset => dataset.data = []);
              sirChart.update('none');
         }
 
@@ -667,7 +593,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function handleResize() {
-        // CORRECTION : Utiliser params.gridSize au lieu de la variable non définie gridSize
         if (params.gridSize > 0) {
             createGridDOM(params.gridSize);
             renderGrid();
@@ -679,13 +604,9 @@ document.addEventListener('DOMContentLoaded', () => {
         updateParameterValues();
 
         exportCsvButton.addEventListener('click', exportDataToCsv);
-
-        infectionRadiusSlider.addEventListener('input', updateParameterValues);
-        infectionRateSlider.addEventListener('input', updateParameterValues);
-        infectionDurationSlider.addEventListener('input', updateParameterValues);
-        mortalityRateSlider.addEventListener('input', updateParameterValues);
-        immunityLevelSlider.addEventListener('input', updateParameterValues);
-
+        [infectionRadiusSlider, infectionRateSlider, infectionDurationSlider, mortalityRateSlider, immunityLevelSlider].forEach(slider => {
+            slider.addEventListener('input', updateParameterValues);
+        });
         tickSpeedSlider.addEventListener('input', () => {
             updateParameterValues();
             if (isRunning) {
@@ -693,23 +614,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 simulationInterval = setInterval(simulationStep, params.actualDelayMs);
             }
         });
-
-        gridSizeInput.addEventListener('change', () => { updateParameterValues(); resetSimulation(); });
-        populationSizeInput.addEventListener('change', () => { updateParameterValues(); resetSimulation(); });
-        initialInfectedInput.addEventListener('change', () => { updateParameterValues(); resetSimulation(); });
-
+        [gridSizeInput, populationSizeInput, initialInfectedInput].forEach(input => {
+            input.addEventListener('change', () => { updateParameterValues(); resetSimulation(); });
+        });
+        
         startButton.addEventListener('click', startSimulation);
         pauseButton.addEventListener('click', pauseSimulation);
         resetButton.addEventListener('click', resetSimulation);
-
         endMessageOverlay.addEventListener('click', (event) => {
-            if (event.target === endMessageOverlay) {
-                hideEndMessage();
-            }
+            if (event.target === endMessageOverlay) hideEndMessage();
         });
         
         window.addEventListener('resize', handleResize);
-
         initializeChart();
         resetSimulation();
     }
