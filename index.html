@@ -6,9 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulation Contamination</title>
     <!-- Inclusion de DaisyUI (inclut Tailwind CSS) -->
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.2/dist/full.min.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inclusion de Chart.js -->
+    <link href="styles.css?v=1.0.14" rel="stylesheet"> <!-- Inclusion de Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Styles pour les cellules de la grille, utilisant les variables de couleur DaisyUI */
@@ -18,11 +16,31 @@
             border: 1px solid hsl(var(--b3));
         }
 
-        .sain { background-color: hsl(var(--su)); } /* success */
-        .infecte { background-color: hsl(var(--er)); } /* error */
-        .gueri { background-color: hsl(var(--in)); } /* info */
-        .mort { background-color: hsl(var(--n)); }  /* neutral */
-        .vide { background-color: hsl(var(--b1)); } /* base-100 */
+        .sain {
+            background-color: hsl(var(--su));
+        }
+
+        /* success */
+        .infecte {
+            background-color: hsl(var(--er));
+        }
+
+        /* error */
+        .gueri {
+            background-color: hsl(var(--in));
+        }
+
+        /* info */
+        .mort {
+            background-color: hsl(var(--n));
+        }
+
+        /* neutral */
+        .vide {
+            background-color: hsl(var(--b1));
+        }
+
+        /* base-100 */
 
         .chart-container {
             position: relative;
@@ -33,16 +51,43 @@
         .control-panel-container {
             max-height: 95vh;
             overflow-y: auto;
+
             /* Scrollbar stylisée pour le thème coffee */
-            &::-webkit-scrollbar { width: 8px; }
-            &::-webkit-scrollbar-track { background: hsl(var(--b2)); border-radius: 10px; }
-            &::-webkit-scrollbar-thumb { background: hsl(var(--a)); border-radius: 10px; }
-            &::-webkit-scrollbar-thumb:hover { background: hsl(var(--af)); }
+            &::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            &::-webkit-scrollbar-track {
+                background: hsl(var(--b2));
+                border-radius: 10px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+                background: hsl(var(--a));
+                border-radius: 10px;
+            }
+
+            &::-webkit-scrollbar-thumb:hover {
+                background: hsl(var(--af));
+            }
         }
 
-        #grid { display: grid; width: 100%; height: 100%; }
-        #grid > .cell { width: auto; height: auto; }
-        #gridContainer { display: flex; justify-content: center; align-items: center; }
+        #grid {
+            display: grid;
+            width: 100%;
+            height: 100%;
+        }
+
+        #grid>.cell {
+            width: auto;
+            height: auto;
+        }
+
+        #gridContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
     </style>
 </head>
 
@@ -58,14 +103,17 @@
                 <h2 class="card-title">Paramètres Généraux</h2>
                 <div class="form-control w-full">
                     <label class="label" for="gridSize"><span class="label-text">Taille Grille:</span></label>
-                    <input type="number" id="gridSize" value="50" min="10" max="100" class="input input-bordered w-full">
+                    <input type="number" id="gridSize" value="50" min="10" max="100"
+                        class="input input-bordered w-full">
                 </div>
                 <div class="form-control w-full">
-                    <label class="label" for="populationSize"><span class="label-text">Nb. Individus (0=Manuel):</span></label>
+                    <label class="label" for="populationSize"><span class="label-text">Nb. Individus
+                            (0=Manuel):</span></label>
                     <input type="number" id="populationSize" value="400" min="0" class="input input-bordered w-full">
                 </div>
                 <div class="form-control w-full">
-                    <label class="label" for="initialInfected"><span class="label-text">Nb. Infectés Initiaux:</span></label>
+                    <label class="label" for="initialInfected"><span class="label-text">Nb. Infectés
+                            Initiaux:</span></label>
                     <input type="number" id="initialInfected" value="5" min="1" class="input input-bordered w-full">
                 </div>
             </div>
@@ -76,29 +124,41 @@
             <div class="card-body p-4">
                 <h2 class="card-title">Paramètres Simulation</h2>
                 <div class="form-control w-full">
-                    <label class="label" for="infectionRadius"><span class="label-text">Rayon d'infection: <span id="infectionRadiusValue">2</span></span></label>
-                    <input type="range" id="infectionRadius" min="1" max="10" value="2" step="0.5" class="range range-primary mt-1">
+                    <label class="label" for="infectionRadius"><span class="label-text">Rayon d'infection: <span
+                                id="infectionRadiusValue">2</span></span></label>
+                    <input type="range" id="infectionRadius" min="1" max="10" value="2" step="0.5"
+                        class="range range-primary mt-1">
                 </div>
                 <div class="form-control w-full">
-                    <label class="label" for="infectionRate"><span class="label-text">Taux d'infection (base): <span id="infectionRateValue">0.1</span></span></label>
-                    <input type="range" id="infectionRate" min="0" max="1" value="0.1" step="0.01" class="range range-primary mt-1">
+                    <label class="label" for="infectionRate"><span class="label-text">Taux d'infection (base): <span
+                                id="infectionRateValue">0.1</span></span></label>
+                    <input type="range" id="infectionRate" min="0" max="1" value="0.1" step="0.01"
+                        class="range range-primary mt-1">
                     <p class="text-xs text-base-content/70">Diminue avec la distance.</p>
                 </div>
                 <div class="form-control w-full">
-                    <label class="label" for="infectionDuration"><span class="label-text">Durée Infection (ticks): <span id="infectionDurationValue">50</span></span></label>
-                    <input type="range" id="infectionDuration" min="5" max="200" value="50" step="5" class="range range-secondary mt-1">
+                    <label class="label" for="infectionDuration"><span class="label-text">Durée Infection (ticks): <span
+                                id="infectionDurationValue">50</span></span></label>
+                    <input type="range" id="infectionDuration" min="5" max="200" value="50" step="5"
+                        class="range range-secondary mt-1">
                 </div>
                 <div class="form-control w-full">
-                    <label class="label" for="mortalityRate"><span class="label-text">Taux Mortalité: <span id="mortalityRateValue">5</span>%</span></label>
-                    <input type="range" id="mortalityRate" min="0" max="100" value="5" step="1" class="range range-accent mt-1">
+                    <label class="label" for="mortalityRate"><span class="label-text">Taux Mortalité: <span
+                                id="mortalityRateValue">5</span>%</span></label>
+                    <input type="range" id="mortalityRate" min="0" max="100" value="5" step="1"
+                        class="range range-accent mt-1">
                 </div>
                 <div class="form-control w-full">
-                    <label class="label" for="immunityLevel"><span class="label-text">Immunité après guérison: <span id="immunityLevelValue">90</span>%</span></label>
-                    <input type="range" id="immunityLevel" min="0" max="100" value="90" step="5" class="range range-info mt-1">
+                    <label class="label" for="immunityLevel"><span class="label-text">Immunité après guérison: <span
+                                id="immunityLevelValue">90</span>%</span></label>
+                    <input type="range" id="immunityLevel" min="0" max="100" value="90" step="5"
+                        class="range range-info mt-1">
                 </div>
                 <div class="form-control w-full">
-                    <label class="label" for="tickSpeed"><span class="label-text">Vitesse (10=Lent, 1000=Rapide): <span id="tickSpeedValue">100</span></span></label>
-                    <input type="range" id="tickSpeed" min="10" max="1000" value="100" step="10" class="range range-warning mt-1">
+                    <label class="label" for="tickSpeed"><span class="label-text">Vitesse (10=Lent, 1000=Rapide): <span
+                                id="tickSpeedValue">100</span></span></label>
+                    <input type="range" id="tickSpeed" min="10" max="1000" value="100" step="10"
+                        class="range range-warning mt-1">
                 </div>
             </div>
         </div>
@@ -112,7 +172,8 @@
                     <button id="pauseButton" class="btn btn-warning flex-1" disabled>Pause</button>
                 </div>
                 <button id="resetButton" class="btn btn-error w-full">Réinitialiser</button>
-                <p id="manualPlacementInfo" class="text-sm text-info mt-2 hidden">Mode placement manuel actif. Cliquez sur la grille pour placer/infecter (Vide -> Sain -> Infecté -> Vide).</p>
+                <p id="manualPlacementInfo" class="text-sm text-info mt-2 hidden">Mode placement manuel actif. Cliquez
+                    sur la grille pour placer/infecter (Vide -> Sain -> Infecté -> Vide).</p>
             </div>
         </div>
 
@@ -144,16 +205,20 @@
 
     <!-- Zone de Simulation -->
     <div class="w-full lg:w-3/4 flex justify-center items-center lg:items-start lg:pl-4 flex-grow">
-        <div id="gridContainer" class="bg-base-100 shadow-xl overflow-auto w-full max-w-full aspect-square max-h-[90vh]">
-            <div id="grid" class="border border-base-content/20" style="grid-template-columns: repeat(50, minmax(0, 1fr));">
+        <div id="gridContainer"
+            class="bg-base-100 shadow-xl overflow-auto w-full max-w-full aspect-square max-h-[90vh]">
+            <div id="grid" class="border border-base-content/20"
+                style="grid-template-columns: repeat(50, minmax(0, 1fr));">
                 <!-- Les cellules seront ajoutées ici par JS -->
             </div>
         </div>
     </div>
 
     <!-- Message de fin de simulation -->
-    <div id="endMessageOverlay" class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center hidden z-50 transition-opacity duration-300 ease-in-out opacity-0">
-        <div class="bg-base-100 p-8 rounded-lg shadow-xl text-center transform scale-95 opacity-0 transition-all duration-300 ease-out" id="endMessageBox">
+    <div id="endMessageOverlay"
+        class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center hidden z-50 transition-opacity duration-300 ease-in-out opacity-0">
+        <div class="bg-base-100 p-8 rounded-lg shadow-xl text-center transform scale-95 opacity-0 transition-all duration-300 ease-out"
+            id="endMessageBox">
             <p class="text-3xl font-bold text-info mb-3">Simulation terminée !</p>
             <p id="endMessageDetails" class="text-md text-base-content"></p>
         </div>
