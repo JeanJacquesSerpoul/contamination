@@ -164,9 +164,19 @@ document.addEventListener('DOMContentLoaded', () => {
         manualPlacementInfo.classList.toggle('hidden', !params.manualPlacement || isRunning);
     }
 
+// ... (début du fichier script.js identique) ...
+
     function createGridDOM(size) {
         gridElement.innerHTML = '';
+        // DÉFINITION DES COLONNES (EXISTANT)
         gridElement.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
+        
+        // --- CORRECTION ---
+        // AJOUT DE LA DÉFINITION DES LIGNES (MANQUANT)
+        // Sans cette ligne, les lignes de la grille ont une hauteur de 0 car leur contenu est vide.
+        gridElement.style.gridTemplateRows = `repeat(${size}, minmax(0, 1fr))`;
+        // --- FIN DE LA CORRECTION ---
+
         gridCells = [];
 
         for (let r = 0; r < size; r++) {
@@ -187,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+// ... (le reste du fichier script.js est identique) ...
     function initializeGridData(size) {
         grid = [];
         for (let r = 0; r < size; r++) {
