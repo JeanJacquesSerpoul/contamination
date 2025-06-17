@@ -1,0 +1,23 @@
+{
+  "devDependencies": {
+    "daisyui": "^5.0.43"
+  },
+  "name": "contamination",
+  "version": "1.0.0",
+  "description": "Simulation maladie contagieuse",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JeanJacquesSerpoul/contamination.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JeanJacquesSerpoul/contamination/issues"
+  },
+  "homepage": "https://github.com/JeanJacquesSerpoul/contamination#readme"
+}
