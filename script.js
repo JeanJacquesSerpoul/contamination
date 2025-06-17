@@ -593,13 +593,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // --- BUG FIX START ---
-    // The original function would wipe the grid on window resize but not redraw the individuals.
-    // By adding `renderGrid()`, we ensure that after the DOM elements are recreated,
-    // their visual state is immediately synced with the simulation's data model.
+    // La fonction `handleResize` est appelée lorsque la fenêtre change de taille.
+    // L'ancienne version recréait les cellules de la grille (`createGridDOM`) mais oubliait
+    // de leur réappliquer leur état actuel (sain, infecté, etc.).
+    // En ajoutant `renderGrid()`, on force la mise à jour visuelle des nouvelles cellules
+    // pour qu'elles correspondent à l'état de la simulation, rendant ainsi la grille visible à nouveau.
     function handleResize() {
         if (params.gridSize > 0) {
-            createGridDOM(params.gridSize);
-            renderGrid(); // This line was missing or ineffective, causing the grid to appear empty.
+            createGridDOM(params.gridSize); // Recrée les éléments HTML de la grille
+            renderGrid(); // APPLIQUE L'ÉTAT ACTUEL : Cette ligne corrige le bug.
         }
     }
     // --- BUG FIX END ---
