@@ -47,7 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let isManualPlacementMode = false;
     
     // **OPTIMIZATION**: Maintain a list of only the infected individuals
-    let infectedList = []; 
+    let infectedList = [];
+    
+    // **MAJOR OPTIMIZATION**: State counters to avoid full grid scanning
+    let stateCounts = {
+        [State.HEALTHY]: 0,
+        [State.INFECTED]: 0,
+        [State.RECOVERED]: 0,
+        [State.DEAD]: 0,
+        [State.EMPTY]: 0
+    };
+    let totalPopulation = 0;
 
     let sirChart = null;
 
@@ -178,6 +188,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initializeGridData(size) {
         grid = [];
+        // Reset state counters
+        stateCounts = {
+            [State.HEALTHY]: 0,
+            [State.INFECTED]: 0,
+            [State.RECOVERED]: 0,
+            [State.DEAD]: 0,
+            [State.EMPTY]: size * size
+        };
+        totalPopulation = 0;
+        
         for (let r = 0; r < size; r++) {
             grid[r] = [];
             for (let c = 0; c < size; c++) {
@@ -192,15 +212,26 @@ document.addEventListener('DOMContentLoaded', () => {
         let placed = 0;
         let attempts = 0;
         const maxAttempts = size * size * 2;
+        
+        // Track changes for state counters
+        let healthyCount = 0;
+        
         while (placed < count && attempts < maxAttempts) {
             const r = Math.floor(Math.random() * size);
             const c = Math.floor(Math.random() * size);
             if (grid[r][c].state === State.EMPTY) {
                 grid[r][c].state = State.HEALTHY;
+                healthyCount++;
                 placed++;
             }
             attempts++;
         }
+        
+        // Update state counters
+        stateCounts[State.EMPTY] -= healthyCount;
+        stateCounts[State.HEALTHY] += healthyCount;
+        totalPopulation += healthyCount;
+        
         const healthyIndividualsCoords = [];
         for (let r = 0; r < size; r++) {
             for (let c = 0; c < size; c++) {
@@ -209,11 +240,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         healthyIndividualsCoords.sort(() => Math.random() - 0.5);
         const numToInfect = Math.min(initialInfectedCount, healthyIndividualsCoords.length);
+        
+        // Update state counters for infections
+        stateCounts[State.HEALTHY] -= numToInfect;
+        stateCounts[State.INFECTED] += numToInfect;
+        
         for (let i = 0; i < numToInfect; i++) {
             const coord = healthyIndividualsCoords[i];
             grid[coord.r][coord.c].state = State.INFECTED;
             grid[coord.r][coord.c].infectionTimer = 0;
-            // **OPTIMIZATION**: Add to the infected list
             infectedList.push({ r: coord.r, c: coord.c });
         }
     }
@@ -227,24 +262,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (r < 0 || r >= params.gridSize || c < 0 || c >= params.gridSize) return;
 
         const currentCell = grid[r][c];
+        const oldState = currentCell.state;
         
         // **OPTIMIZATION**: Update infectedList when manually changing states
-        if (currentCell.state === State.INFECTED) {
-            // Remove from infected list before changing its state
+        if (oldState === State.INFECTED) {
             infectedList = infectedList.filter(p => p.r !== r || p.c !== c);
         }
 
-        if (currentCell.state === State.EMPTY) {
-            currentCell.state = State.HEALTHY;
-        } else if (currentCell.state === State.HEALTHY) {
-            currentCell.state = State.INFECTED;
+        let newState;
+        if (oldState === State.EMPTY) {
+            newState = State.HEALTHY;
+            totalPopulation++;
+        } else if (oldState === State.HEALTHY) {
+            newState = State.INFECTED;
             currentCell.infectionTimer = 0;
-            // Add to infected list
             infectedList.push({r, c});
         } else {
-             currentCell.state = State.EMPTY;
-             currentCell.infectionTimer = 0;
+            newState = State.EMPTY;
+            currentCell.infectionTimer = 0;
+            totalPopulation--;
         }
+        
+        // Update state counters
+        stateCounts[oldState]--;
+        stateCounts[newState]++;
+        currentCell.state = newState;
+        
         renderGridCell(r, c);
         updateStats();
     }
@@ -271,19 +314,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // **OPTIMIZATION**: Calculate squared distance to avoid Math.sqrt
     function calculateDistanceSquared(r1, c1, r2, c2) {
-        return Math.pow(r1 - r2, 2) + Math.pow(c1 - c2, 2);
+        return (r1 - r2) * (r1 - r2) + (c1 - c2) * (c1 - c2);
     }
 
     // **OPTIMIZATION**: Reworked to use squared distance
     function getNeighbors(r, c, radius) {
         const neighbors = [];
         const size = params.gridSize;
-        const radiusSquared = radius * radius; // Pre-calculate squared radius
+        const radiusSquared = radius * radius;
         const r_min = Math.max(0, r - Math.floor(radius));
         const r_max = Math.min(size - 1, r + Math.floor(radius));
         const c_min = Math.max(0, c - Math.floor(radius));
-        const c_max = 'min' in Math ? Math.min(size - 1, c + Math.floor(radius)) : size - 1;
-
+        const c_max = Math.min(size - 1, c + Math.floor(radius));
 
         for (let nr = r_min; nr <= r_max; nr++) {
             for (let nc = c_min; nc <= c_max; nc++) {
@@ -292,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const distSquared = calculateDistanceSquared(r, c, nr, nc);
                 if (distSquared <= radiusSquared) {
-                    // We pass the sqrt of the squared distance to keep the original logic for probability calculation
                     neighbors.push({ r: nr, c: nc, distance: Math.sqrt(distSquared) });
                 }
             }
@@ -326,9 +367,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const changes = []; // Store changes to apply at the end {r, c, newState, newTimer}
-        const newlyInfected = []; // Store coords of newly infected people for the next tick's list
-        const stillInfected = []; // Store coords of people who remain infected
+        // **OPTIMIZATION**: Use Set for O(1) lookup instead of Array.some()
+        const changes = [];
+        const newlyInfected = [];
+        const stillInfected = [];
+        const changedCoords = new Set();
 
         // 1. Iterate ONLY over infected individuals
         for (const infected of infectedList) {
@@ -345,41 +388,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     newState = (Math.random() < params.immunityLevel) ? State.RECOVERED : State.HEALTHY;
                 }
-                changes.push({ r, c, newState: newState, newTimer: 0 });
-                // This person is no longer infected, so they are not added to `stillInfected`
+                
+                // **OPTIMIZATION**: Update state counters
+                stateCounts[State.INFECTED]--;
+                stateCounts[newState]++;
+                
+                changes.push({ r, c, newState, newTimer: 0 });
+                changedCoords.add(`${r},${c}`);
             } else {
                 // This person remains infected for the next tick
                 stillInfected.push({ r, c });
 
                 // 3. Try to infect neighbors
                 const neighbors = getNeighbors(r, c, params.infectionRadius);
-                neighbors.forEach(neighbor => {
-                    // Check if neighbor has already been infected in this tick
-                    if (changes.some(ch => ch.r === neighbor.r && ch.c === neighbor.c)) {
-                        return;
-                    }
+                for (const neighbor of neighbors) {
+                    const key = `${neighbor.r},${neighbor.c}`;
+                    if (changedCoords.has(key)) continue;
                     
                     const distance = neighbor.distance;
                     let infectionProbability = params.infectionRate * Math.max(0, 1 - ((distance - 1) / Math.max(1, params.infectionRadius)));
                     infectionProbability = Math.min(params.infectionRate, Math.max(0, infectionProbability));
 
                     if (infectionProbability > 0 && Math.random() < infectionProbability) {
+                        // **OPTIMIZATION**: Update state counters
+                        stateCounts[State.HEALTHY]--;
+                        stateCounts[State.INFECTED]++;
+                        
                         changes.push({ r: neighbor.r, c: neighbor.c, newState: State.INFECTED, newTimer: 0 });
                         newlyInfected.push({ r: neighbor.r, c: neighbor.c });
+                        changedCoords.add(key);
                     }
-                });
+                }
             }
         }
         
         tickCount++;
 
         // 4. Apply all collected changes to the grid and render them
-        changes.forEach(change => {
+        for (const change of changes) {
             const { r, c, newState, newTimer } = change;
             grid[r][c].state = newState;
             grid[r][c].infectionTimer = newTimer;
             renderGridCell(r, c);
-        });
+        }
         
         // 5. Update the list of infected people for the next tick
         infectedList = stillInfected.concat(newlyInfected);
@@ -408,24 +459,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateStats() { /* Unchanged */
-        let s = 0, i = 0, r_val = 0, d = 0, total = 0;
-        const size = params.gridSize;
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
-                if (grid[row]?.[col]) {
-                    const state = grid[row][col].state;
-                    if (state !== State.EMPTY) total++;
-                    if (state === State.HEALTHY) s++; else if (state === State.INFECTED) i++; else if (state === State.RECOVERED) r_val++; else if (state === State.DEAD) d++;
-                }
-            }
-        }
+    function updateStats() { /* MAJOR OPTIMIZATION: Use state counters instead of scanning */
+        const s = stateCounts[State.HEALTHY];
+        const i = stateCounts[State.INFECTED];
+        const r_val = stateCounts[State.RECOVERED];
+        const d = stateCounts[State.DEAD];
+        
         tickCountSpan.textContent = tickCount;
         sainCountSpan.textContent = s;
         infecteCountSpan.textContent = i;
         gueriCountSpan.textContent = r_val;
         mortCountSpan.textContent = d;
-        totalCountSpan.textContent = total;
+        totalCountSpan.textContent = totalPopulation;
         updateHistoryAndChart(tickCount, s, i, r_val, d);
     }
 
@@ -508,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Simulation en pause.");
     }
 
-    function resetSimulation() { /* Modified to handle infectedList */
+    function resetSimulation() { /* Modified to handle infectedList and state counters */
         pauseSimulation();
         hideEndMessage();
         tickCount = 0;
@@ -524,7 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
         isManualPlacementMode = params.manualPlacement;
         manualPlacementInfo.classList.toggle('hidden', !isManualPlacementMode || isRunning);
         if (!isManualPlacementMode) {
-            // populateGridRandomly now populates infectedList for us
             populateGridRandomly(params.gridSize, params.populationSize, params.initialInfected);
         }
         renderGrid();
